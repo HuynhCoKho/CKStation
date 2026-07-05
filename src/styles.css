@@ -360,6 +360,53 @@ textarea {
   padding-top: 12px;
 }
 
+.category-manager {
+  border-bottom: 1px solid #eee9df;
+  display: grid;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.category-manager h3 {
+  margin: 0;
+}
+
+.category-form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.category-form button,
+.soft-button,
+.category-admin-row button {
+  background: #ece7dd;
+  border-radius: 6px;
+  color: #29362f;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.category-admin-list {
+  display: grid;
+  gap: 8px;
+}
+
+.category-admin-row {
+  align-items: center;
+  border: 1px solid #eee9df;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  padding: 10px;
+}
+
+.category-admin-row span {
+  color: #667169;
+  font-size: 13px;
+}
+
 .menu-admin-row {
   align-items: center;
   display: grid;

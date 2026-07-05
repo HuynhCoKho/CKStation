@@ -50,6 +50,7 @@ export type TableState = {
 
 export type AppData = {
   menu: MenuItem[];
+  categories: string[];
   orders: Order[];
   expenses: Expense[];
   stats: DailyStats;

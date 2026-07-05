@@ -21,8 +21,10 @@ function normalizeData(data: AppData) {
   const tables = data.tables?.length
     ? data.tables
     : tableNames.map((name) => ({ name, occupied: false }));
+  const categories = Array.from(new Set([...(data.categories || []), ...data.menu.map((item) => item.category)].filter(Boolean)));
   return {
     ...data,
+    categories,
     tableNames,
     tables,
   };
@@ -104,7 +106,7 @@ export function App() {
 
 function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
   const activeMenu = data.menu.filter((item) => item.active);
-  const categories = Array.from(new Set(activeMenu.map((item) => item.category)));
+  const categories = Array.from(new Set([...(data.categories || []), ...activeMenu.map((item) => item.category)].filter((name) => activeMenu.some((item) => item.category === name))));
   const tableOptions = data.tables?.length
     ? data.tables.map((table) => table.name)
     : data.tableNames?.length
@@ -283,9 +285,12 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
   const [tableDraft, setTableDraft] = useState("");
   const [editingTableName, setEditingTableName] = useState("");
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [editingCategory, setEditingCategory] = useState("");
   const [adminMessage, setAdminMessage] = useState("");
   const [adminError, setAdminError] = useState("");
   const openOrders = data.orders.filter((order) => order.status === "open");
+  const categories = Array.from(new Set([...(data.categories || []), ...data.menu.map((item) => item.category)].filter(Boolean)));
   const tableMap = useMemo(() => {
     const configuredTables = data.tables?.length
       ? data.tables
@@ -356,6 +361,53 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   function editTable(table: TableState) {
     setTableDraft(table.name);
     setEditingTableName(table.name);
+  }
+
+  async function saveCategory(event?: FormEvent) {
+    event?.preventDefault();
+    const name = categoryDraft.trim();
+    if (!name) return;
+    const nextCategories = categories
+      .filter((category) => category !== editingCategory && category !== name)
+      .concat(name);
+
+    try {
+      if (editingCategory) {
+        const changedItems = data.menu.filter((item) => item.category === editingCategory);
+        await Promise.all(changedItems.map((item) => api.saveMenuItem({ ...item, category: name })));
+      }
+      await api.setCategories(nextCategories);
+      setCategoryDraft("");
+      setEditingCategory("");
+      setAdminError("");
+      setAdminMessage("Đã lưu nhóm món.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không lưu được nhóm món.");
+    }
+  }
+
+  async function deleteCategory(category: string) {
+    if (data.menu.some((item) => item.category === category)) {
+      setAdminMessage("");
+      setAdminError("Nhóm này đang có món. Hãy sửa hoặc ẩn các món trong nhóm trước khi xóa nhóm.");
+      return;
+    }
+    try {
+      await api.setCategories(categories.filter((item) => item !== category));
+      setAdminError("");
+      setAdminMessage("Đã xóa nhóm món.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không xóa được nhóm món.");
+    }
+  }
+
+  function editCategory(category: string) {
+    setCategoryDraft(category);
+    setEditingCategory(category);
   }
 
   async function updateOrder(order: Order, status: Order["status"]) {
@@ -482,8 +534,37 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
         <div className="tools-grid">
           <form className="tool-panel" onSubmit={saveMenu}>
             <h2><ClipboardList size={20} /> Menu</h2>
+            <div className="category-manager">
+              <h3>Nhóm món</h3>
+              <div className="category-form">
+                <input value={categoryDraft} onChange={(e) => setCategoryDraft(e.target.value)} placeholder="Cafe, Trà, Đồ ăn..." />
+                <button type="button" onClick={() => saveCategory()}>
+                  {editingCategory ? "Lưu nhóm" : "Thêm nhóm"}
+                </button>
+              </div>
+              {editingCategory && (
+                <button className="soft-button" type="button" onClick={() => { setEditingCategory(""); setCategoryDraft(""); }}>
+                  Hủy sửa nhóm
+                </button>
+              )}
+              <div className="category-admin-list">
+                {categories.map((category) => (
+                  <div className="category-admin-row" key={category}>
+                    <strong>{category}</strong>
+                    <span>{data.menu.filter((item) => item.category === category).length} món</span>
+                    <button type="button" onClick={() => editCategory(category)}>Sửa</button>
+                    <button type="button" onClick={() => deleteCategory(category)}>Xóa</button>
+                  </div>
+                ))}
+              </div>
+            </div>
             <input value={menuDraft.name || ""} onChange={(e) => setMenuDraft({ ...menuDraft, name: e.target.value })} placeholder="Tên món" required />
-            <input value={menuDraft.category || ""} onChange={(e) => setMenuDraft({ ...menuDraft, category: e.target.value })} placeholder="Nhóm món" required />
+            <input list="category-options-admin" value={menuDraft.category || ""} onChange={(e) => setMenuDraft({ ...menuDraft, category: e.target.value })} placeholder="Nhóm món" required />
+            <datalist id="category-options-admin">
+              {categories.map((category) => (
+                <option value={category} key={category} />
+              ))}
+            </datalist>
             <input
               type="number"
               value={menuDraft.price || ""}

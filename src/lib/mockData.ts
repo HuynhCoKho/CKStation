@@ -4,6 +4,7 @@ import { todayKey } from "./money";
 export const mockData: AppData = {
   tableCount: 12,
   tableNames: ["Bàn 1", "Bàn 2", "Hoa Mai", "Hoa Đào", "Sân vườn"],
+  categories: ["Cafe", "Trà", "Đá xay", "Đồ ăn"],
   tables: [
     { name: "Bàn 1", occupied: false },
     { name: "Bàn 2", occupied: false },

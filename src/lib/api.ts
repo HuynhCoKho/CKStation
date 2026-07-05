@@ -35,6 +35,7 @@ export const api = {
   setTableCount: (tableCount: number) => request<number>("setTableCount", { tableCount }, true),
   setTableNames: (tableNames: string[]) => request<string[]>("setTableNames", { tableNames }, true),
   setTables: (tables: TableState[]) => request<TableState[]>("setTables", { tables }, true),
+  setCategories: (categories: string[]) => request<string[]>("setCategories", { categories }, true),
 };
 
 function mockRequest(action: string, payload: Record<string, unknown>) {
@@ -48,6 +49,7 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   if (action === "setTableCount") return payload.tableCount;
   if (action === "setTableNames") return payload.tableNames;
   if (action === "setTables") return payload.tables;
+  if (action === "setCategories") return payload.categories;
   return data;
 }
 

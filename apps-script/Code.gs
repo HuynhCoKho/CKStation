@@ -30,7 +30,7 @@ function doGet(e) {
     }
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(e.parameter.token);
@@ -49,7 +49,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(body.token);
@@ -72,6 +72,7 @@ function route_(action, payload) {
   if (action === "setTableCount") return setTableCount_(payload.tableCount);
   if (action === "setTableNames") return setTableNames_(payload.tableNames);
   if (action === "setTables") return setTables_(payload.tables);
+  if (action === "setCategories") return setCategories_(payload.categories);
   throw new Error("Action không hợp lệ.");
 }
 
@@ -120,6 +121,7 @@ function loadData_() {
 
   return {
     menu,
+    categories: getCategories_(menu),
     orders,
     expenses,
     stats: getDailyStats_(orders, expenses),
@@ -127,6 +129,40 @@ function loadData_() {
     tableNames: getTableNames_(),
     tables: getTables_(),
   };
+}
+
+function setCategories_(categories) {
+  const saved = (categories || [])
+    .map(function (category) { return String(category || "").trim(); })
+    .filter(Boolean);
+  setSetting_("categories", JSON.stringify(saved));
+  return saved;
+}
+
+function getCategories_(menu) {
+  const raw = getSetting_("categories");
+  const saved = [];
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach(function (category) {
+          const name = String(category || "").trim();
+          if (name && saved.indexOf(name) < 0) saved.push(name);
+        });
+      }
+    } catch (error) {
+      String(raw).split(/[\n,]+/).forEach(function (category) {
+        const name = category.trim();
+        if (name && saved.indexOf(name) < 0) saved.push(name);
+      });
+    }
+  }
+  (menu || []).forEach(function (item) {
+    const name = String(item.category || "").trim();
+    if (name && saved.indexOf(name) < 0) saved.push(name);
+  });
+  return saved;
 }
 
 function createOrder_(order) {
