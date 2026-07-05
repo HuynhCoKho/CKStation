@@ -53,8 +53,8 @@ export function App() {
   const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
 
-  async function refresh() {
-    setLoading(true);
+  async function refresh(showIndicator = !data) {
+    if (showIndicator) setLoading(true);
     setError("");
     try {
       const nextData = normalizeData(await api.loadData());
@@ -63,18 +63,18 @@ export function App() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không tải được dữ liệu.");
     } finally {
-      setLoading(false);
+      if (showIndicator) setLoading(false);
     }
   }
 
   useEffect(() => {
-    refresh();
+    refresh(!data);
   }, []);
 
   useEffect(() => {
     if (isPublicMenu || view !== "admin") return;
-    refresh();
-    const interval = window.setInterval(refresh, 15000);
+    refresh(false);
+    const interval = window.setInterval(() => refresh(false), 15000);
     return () => window.clearInterval(interval);
   }, [isPublicMenu, view]);
 
@@ -93,7 +93,7 @@ export function App() {
             <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
               <Settings size={18} /> Quản lý
             </button>
-            <button onClick={refresh} aria-label="Tải lại">
+            <button onClick={() => refresh(true)} aria-label="Tải lại">
               <RefreshCw size={18} />
             </button>
           </nav>
