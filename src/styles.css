@@ -309,6 +309,10 @@ textarea {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }
 
+.admin-feedback {
+  margin-bottom: 14px;
+}
+
 .table-card {
   min-height: 150px;
   padding: 14px;

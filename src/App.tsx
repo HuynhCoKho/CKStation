@@ -28,6 +28,17 @@ function normalizeData(data: AppData) {
   };
 }
 
+function tableLabel(table: TableState, index: number) {
+  const fallback = `Bàn ${index + 1}`;
+  return table.name === fallback ? fallback : `${fallback} - ${table.name}`;
+}
+
+function orderMatchesTable(orderTable: string, table: TableState, index: number) {
+  const number = String(index + 1);
+  const fallback = `Bàn ${number}`;
+  return orderTable === table.name || orderTable === number || orderTable === fallback || orderTable === tableLabel(table, index);
+}
+
 export function App() {
   const normalizedPath = window.location.pathname.toLowerCase().replace(/\/$/, "");
   const isPublicMenu = normalizedPath.endsWith("/menu") || normalizedPath.endsWith("/menu.html");
@@ -272,6 +283,8 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
   const [tableDraft, setTableDraft] = useState("");
   const [editingTableName, setEditingTableName] = useState("");
+  const [adminMessage, setAdminMessage] = useState("");
+  const [adminError, setAdminError] = useState("");
   const openOrders = data.orders.filter((order) => order.status === "open");
   const tableMap = useMemo(() => {
     const configuredTables = data.tables?.length
@@ -281,11 +294,12 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
         : Array.from({ length: data.tableCount }, (_, index) => ({ name: `Bàn ${index + 1}`, occupied: false }));
     const extraTables = openOrders
       .map((order) => order.tableNumber)
-      .filter((tableName) => tableName && !configuredTables.some((table) => table.name === tableName))
+      .filter((tableName) => tableName && !configuredTables.some((table, index) => orderMatchesTable(tableName, table, index)))
       .map((name) => ({ name, occupied: false }));
-    return [...configuredTables, ...extraTables].map((table) => ({
+    return [...configuredTables, ...extraTables].map((table, index) => ({
       table,
-      orders: openOrders.filter((order) => order.tableNumber === table.name),
+      label: tableLabel(table, index),
+      orders: openOrders.filter((order) => orderMatchesTable(order.tableNumber, table, index)),
     }));
   }, [data.tableCount, data.tableNames, data.tables, openOrders]);
 
@@ -314,15 +328,29 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
     const currentTables = data.tables?.length ? data.tables : data.tableNames.map((tableName) => ({ name: tableName, occupied: false }));
     const withoutEdited = currentTables.filter((table) => table.name !== editingTableName && table.name !== name);
     const existing = currentTables.find((table) => table.name === editingTableName);
-    await api.setTables([...withoutEdited, { name, occupied: existing?.occupied || false }]);
-    setTableDraft("");
-    setEditingTableName("");
-    onChanged();
+    try {
+      await api.setTables([...withoutEdited, { name, occupied: existing?.occupied || false }]);
+      setTableDraft("");
+      setEditingTableName("");
+      setAdminError("");
+      setAdminMessage("Đã lưu bàn.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không lưu được bàn.");
+    }
   }
 
   async function updateTables(nextTables: TableState[]) {
-    await api.setTables(nextTables);
-    onChanged();
+    try {
+      await api.setTables(nextTables);
+      setAdminError("");
+      setAdminMessage("Đã cập nhật bàn.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không cập nhật được bàn.");
+    }
   }
 
   function editTable(table: TableState) {
@@ -331,8 +359,15 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   }
 
   async function updateOrder(order: Order, status: Order["status"]) {
-    await api.updateOrder({ ...order, status, paidAt: status === "paid" ? new Date().toISOString() : order.paidAt });
-    onChanged();
+    try {
+      await api.updateOrder({ ...order, status, paidAt: status === "paid" ? new Date().toISOString() : order.paidAt });
+      setAdminError("");
+      setAdminMessage(status === "paid" ? "Đã tính tiền đơn." : "Đã hủy đơn.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không cập nhật được đơn.");
+    }
   }
 
   return (
@@ -386,9 +421,9 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
             </button>
           )}
           <div className="table-admin-list">
-            {(data.tables?.length ? data.tables : data.tableNames.map((name) => ({ name, occupied: false }))).map((table) => (
+            {(data.tables?.length ? data.tables : data.tableNames.map((name) => ({ name, occupied: false }))).map((table, index) => (
               <div className="table-admin-row" key={table.name}>
-                <strong>{table.name}</strong>
+                <strong>{tableLabel(table, index)}</strong>
                 <span>{table.occupied ? "Đang có khách" : "Trống"}</span>
                 <button type="button" onClick={() => editTable(table)}>Sửa</button>
                 <button
@@ -418,10 +453,12 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
           <h1>Bàn đang phục vụ</h1>
           <p>{openOrders.length} đơn mở</p>
         </div>
+        {adminMessage && <p className="success admin-feedback">{adminMessage}</p>}
+        {adminError && <p className="alert inline-alert admin-feedback">{adminError}</p>}
         <div className="table-grid">
-          {tableMap.map(({ table, orders }) => (
+          {tableMap.map(({ table, label, orders }) => (
             <article className={`table-card ${orders.length || table.occupied ? "busy" : ""}`} key={table.name}>
-              <h3>{table.name}</h3>
+              <h3>{label}</h3>
               {!orders.length && <p>{table.occupied ? "Đang có khách" : "Trống"}</p>}
               {orders.map((order) => (
                 <div className="bill" key={order.id}>
