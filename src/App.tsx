@@ -110,15 +110,20 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
   const openOrders = data.orders.filter((order) => order.status === "open");
   const tableOptions = data.tables?.length
     ? data.tables
-        .map((table, index) => ({ table, index, label: tableLabel(table, index) }))
-        .filter(({ table, index }) => !table.occupied && !openOrders.some((order) => orderMatchesTable(order.tableNumber, table, index)))
-        .map(({ label }) => label)
+        .map((table, index) => {
+          const hasOpenOrder = openOrders.some((order) => orderMatchesTable(order.tableNumber, table, index));
+          return {
+            label: tableLabel(table, index),
+            status: hasOpenOrder ? "Đang phục vụ" : table.occupied ? "Đã đánh dấu bận" : "Trống",
+          };
+        })
     : data.tableNames?.length
-      ? data.tableNames.map((name, index) => tableLabel({ name, occupied: false }, index))
-      : Array.from({ length: data.tableCount }, (_, index) => `Bàn ${index + 1}`);
-  const tableOptionsKey = tableOptions.join("|");
+      ? data.tableNames.map((name, index) => ({ label: tableLabel({ name, occupied: false }, index), status: "Trống" }))
+      : Array.from({ length: data.tableCount }, (_, index) => ({ label: `Bàn ${index + 1}`, status: "Trống" }));
+  const tableLabels = tableOptions.map((table) => table.label);
+  const tableOptionsKey = tableOptions.map((table) => `${table.label}:${table.status}`).join("|");
   const [category, setCategory] = useState(categories[0] || "");
-  const [tableNumber, setTableNumber] = useState(tableOptions[0] || "Bàn 1");
+  const [tableNumber, setTableNumber] = useState(tableOptions[0]?.label || "Bàn 1");
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -131,8 +136,8 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
       setTableNumber("");
       return;
     }
-    if (!tableOptions.includes(tableNumber)) {
-      setTableNumber(tableOptions[0]);
+    if (!tableLabels.includes(tableNumber)) {
+      setTableNumber(tableOptions[0].label);
     }
   }, [tableOptionsKey, tableNumber]);
 
@@ -219,9 +224,9 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
         <label>
           Bàn
           <select value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} disabled={!tableOptions.length}>
-            {tableOptions.map((name) => (
-              <option value={name} key={name}>
-                {name}
+            {tableOptions.map((table) => (
+              <option value={table.label} key={table.label}>
+                {table.label} - {table.status}
               </option>
             ))}
           </select>
