@@ -428,7 +428,7 @@ textarea {
   border-radius: 8px;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto auto;
   padding: 10px;
 }
 
@@ -457,6 +457,11 @@ textarea {
   color: #29362f;
   min-height: 34px;
   padding: 7px 10px;
+}
+
+.category-admin-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .check {

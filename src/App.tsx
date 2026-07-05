@@ -41,6 +41,10 @@ function orderMatchesTable(orderTable: string, table: TableState, index: number)
   return orderTable === table.name || orderTable === number || orderTable === fallback || orderTable === tableLabel(table, index);
 }
 
+function compareMenuItemName(a: MenuItem, b: MenuItem) {
+  return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
+}
+
 export function App() {
   const normalizedPath = window.location.pathname.toLowerCase().replace(/\/$/, "");
   const isPublicMenu = normalizedPath.endsWith("/menu") || normalizedPath.endsWith("/menu.html");
@@ -105,7 +109,7 @@ export function App() {
 }
 
 function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
-  const activeMenu = data.menu.filter((item) => item.active);
+  const activeMenu = data.menu.filter((item) => item.active).sort(compareMenuItemName);
   const categories = Array.from(new Set([...(data.categories || []), ...activeMenu.map((item) => item.category)].filter((name) => activeMenu.some((item) => item.category === name))));
   const openOrders = data.orders.filter((order) => order.status === "open");
   const tableOptions = data.tables?.length
@@ -204,6 +208,7 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
         <div className="menu-grid">
           {activeMenu
             .filter((item) => !category || item.category === category)
+            .sort(compareMenuItemName)
             .map((item) => (
               <button className="menu-item" key={item.id} onClick={() => addToCart(item)}>
                 <span>{item.name}</span>
@@ -316,11 +321,11 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const groupedMenu = [
     ...categories.map((category) => ({
       category,
-      items: data.menu.filter((item) => item.category === category),
+      items: data.menu.filter((item) => item.category === category).sort(compareMenuItemName),
     })),
     {
       category: "Chưa phân nhóm",
-      items: data.menu.filter((item) => !item.category),
+      items: data.menu.filter((item) => !item.category).sort(compareMenuItemName),
     },
   ].filter((group) => group.items.length);
   const tableMap = useMemo(() => {
@@ -440,6 +445,25 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   function editCategory(category: string) {
     setCategoryDraft(category);
     setEditingCategory(category);
+  }
+
+  async function moveCategory(category: string, direction: -1 | 1) {
+    const currentIndex = categories.indexOf(category);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= categories.length) return;
+
+    const nextCategories = [...categories];
+    [nextCategories[currentIndex], nextCategories[nextIndex]] = [nextCategories[nextIndex], nextCategories[currentIndex]];
+
+    try {
+      await api.setCategories(nextCategories);
+      setAdminError("");
+      setAdminMessage("Đã đổi thứ tự nhóm món.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không đổi được thứ tự nhóm món.");
+    }
   }
 
   async function hideMenuItem(id: string) {
@@ -605,10 +629,12 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                 </button>
               )}
               <div className="category-admin-list">
-                {categories.map((category) => (
+                {categories.map((category, index) => (
                   <div className="category-admin-row" key={category}>
                     <strong>{category}</strong>
                     <span>{data.menu.filter((item) => item.category === category).length} món</span>
+                    <button type="button" onClick={() => moveCategory(category, -1)} disabled={index === 0}>Lên</button>
+                    <button type="button" onClick={() => moveCategory(category, 1)} disabled={index === categories.length - 1}>Xuống</button>
                     <button type="button" onClick={() => editCategory(category)}>Sửa</button>
                     <button type="button" onClick={() => deleteCategory(category)}>Xóa</button>
                   </div>
