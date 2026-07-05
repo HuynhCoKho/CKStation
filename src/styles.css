@@ -58,6 +58,18 @@ main {
   font-weight: 800;
 }
 
+.brand span {
+  display: grid;
+  gap: 2px;
+  line-height: 1.05;
+}
+
+.brand small {
+  color: #667169;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .tabs {
   background: #f1eee7;
   border-radius: 8px;
