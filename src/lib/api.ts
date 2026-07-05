@@ -1,7 +1,7 @@
 import type { AppData, Expense, MenuItem, Order } from "../types";
 import { mockData } from "./mockData";
 
-const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+const apiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/^\uFEFF/, "").trim();
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
