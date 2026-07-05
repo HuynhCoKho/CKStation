@@ -7,6 +7,7 @@ import type { AppData, Expense, MenuItem, Order, OrderItem } from "./types";
 type View = "customer" | "admin";
 
 export function App() {
+  const isPublicMenu = window.location.pathname.toLowerCase().endsWith("/menu");
   const [view, setView] = useState<View>("customer");
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,23 +36,25 @@ export function App() {
           <Coffee size={26} />
           <span>CK Station</span>
         </button>
-        <nav className="tabs">
-          <button className={view === "customer" ? "active" : ""} onClick={() => setView("customer")}>
-            <Coffee size={18} /> Khách hàng
-          </button>
-          <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
-            <Settings size={18} /> Quản lý
-          </button>
-          <button onClick={refresh} aria-label="Tải lại">
-            <RefreshCw size={18} />
-          </button>
-        </nav>
+        {!isPublicMenu && (
+          <nav className="tabs">
+            <button className={view === "customer" ? "active" : ""} onClick={() => setView("customer")}>
+              <Coffee size={18} /> Khách hàng
+            </button>
+            <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
+              <Settings size={18} /> Quản lý
+            </button>
+            <button onClick={refresh} aria-label="Tải lại">
+              <RefreshCw size={18} />
+            </button>
+          </nav>
+        )}
       </header>
 
       {error && <p className="alert">{error}</p>}
       {loading && <p className="loading">Đang tải dữ liệu...</p>}
-      {!loading && data && view === "customer" && <CustomerPage data={data} onChanged={refresh} />}
-      {!loading && data && view === "admin" && <AdminPage data={data} onChanged={refresh} />}
+      {!loading && data && (isPublicMenu || view === "customer") && <CustomerPage data={data} onChanged={refresh} />}
+      {!loading && data && !isPublicMenu && view === "admin" && <AdminPage data={data} onChanged={refresh} />}
     </main>
   );
 }
