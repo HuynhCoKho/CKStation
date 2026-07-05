@@ -316,6 +316,11 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [editingCategory, setEditingCategory] = useState("");
   const [adminMessage, setAdminMessage] = useState("");
   const [adminError, setAdminError] = useState("");
+  const [adminSection, setAdminSection] = useState<"operations" | "income">("operations");
+  const [incomeMode, setIncomeMode] = useState<"day" | "month" | "year">("day");
+  const [incomeDay, setIncomeDay] = useState(todayKey());
+  const [incomeMonth, setIncomeMonth] = useState(todayKey().slice(0, 7));
+  const [incomeYear, setIncomeYear] = useState(todayKey().slice(0, 4));
   const openOrders = data.orders.filter((order) => order.status === "open");
   const categories = Array.from(new Set([...(data.categories || []), ...data.menu.map((item) => item.category)].filter(Boolean)));
   const groupedMenu = [
@@ -344,6 +349,25 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       orders: openOrders.filter((order) => orderMatchesTable(order.tableNumber, table, index)),
     }));
   }, [data.tableCount, data.tableNames, data.tables, openOrders]);
+  const incomeRange =
+    incomeMode === "day"
+      ? { label: incomeDay, start: incomeDay, end: incomeDay }
+      : incomeMode === "month"
+        ? { label: incomeMonth, start: `${incomeMonth}-01`, end: `${incomeMonth}-31` }
+        : { label: incomeYear, start: `${incomeYear}-01-01`, end: `${incomeYear}-12-31` };
+  const paidOrdersInRange = data.orders.filter((order) => {
+    const paidDate = String(order.paidAt || "").slice(0, 10);
+    return order.status === "paid" && paidDate >= incomeRange.start && paidDate <= incomeRange.end;
+  });
+  const expensesInRange = data.expenses.filter((item) => {
+    const expenseDate = String(item.date || "").slice(0, 10);
+    return expenseDate >= incomeRange.start && expenseDate <= incomeRange.end;
+  });
+  const incomeSummary = {
+    revenue: paidOrdersInRange.reduce((sum, order) => sum + order.total, 0),
+    expense: expensesInRange.reduce((sum, item) => sum + item.amount, 0),
+  };
+  const incomeProfit = incomeSummary.revenue - incomeSummary.expense;
 
   function saveToken() {
     localStorage.setItem("ck_admin_token", token);
@@ -582,38 +606,49 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       </aside>
 
       <div className="admin-main">
-        <div className="section-title">
-          <h1>Bàn đang phục vụ</h1>
-          <p>{openOrders.length} đơn mở</p>
+        <div className="admin-section-tabs">
+          <button className={adminSection === "operations" ? "active" : ""} onClick={() => setAdminSection("operations")}>
+            Vận hành
+          </button>
+          <button className={adminSection === "income" ? "active" : ""} onClick={() => setAdminSection("income")}>
+            Thu nhập
+          </button>
         </div>
         {adminMessage && <p className="success admin-feedback">{adminMessage}</p>}
         {adminError && <p className="alert inline-alert admin-feedback">{adminError}</p>}
-        <div className="table-grid">
-          {tableMap.map(({ table, label, orders }) => (
-            <article className={`table-card ${orders.length || table.occupied ? "busy" : ""}`} key={table.name}>
-              <h3>{label}</h3>
-              {!orders.length && <p>{table.occupied ? "Đang có khách" : "Trống"}</p>}
-              {orders.map((order) => (
-                <div className="bill" key={order.id}>
-                  {order.items.map((item) => (
-                    <div className="bill-line" key={item.id}>
-                      <span>{item.quantity} x {item.name}</span>
-                      <small>{item.note || item.status}</small>
+
+        {adminSection === "operations" ? (
+          <>
+            <div className="section-title">
+              <h1>Bàn đang phục vụ</h1>
+              <p>{openOrders.length} đơn mở</p>
+            </div>
+            <div className="table-grid">
+              {tableMap.map(({ table, label, orders }) => (
+                <article className={`table-card ${orders.length || table.occupied ? "busy" : ""}`} key={table.name}>
+                  <h3>{label}</h3>
+                  {!orders.length && <p>{table.occupied ? "Đang có khách" : "Trống"}</p>}
+                  {orders.map((order) => (
+                    <div className="bill" key={order.id}>
+                      {order.items.map((item) => (
+                        <div className="bill-line" key={item.id}>
+                          <span>{item.quantity} x {item.name}</span>
+                          <small>{item.note || item.status}</small>
+                        </div>
+                      ))}
+                      <strong>{formatMoney(order.total)}</strong>
+                      <div className="actions">
+                        <button onClick={() => updateOrder(order, "paid")}>Tính tiền</button>
+                        <button onClick={() => updateOrder(order, "cancelled")}>Hủy</button>
+                      </div>
                     </div>
                   ))}
-                  <strong>{formatMoney(order.total)}</strong>
-                  <div className="actions">
-                    <button onClick={() => updateOrder(order, "paid")}>Tính tiền</button>
-                    <button onClick={() => updateOrder(order, "cancelled")}>Hủy</button>
-                  </div>
-                </div>
+                </article>
               ))}
-            </article>
-          ))}
-        </div>
+            </div>
 
-        <div className="tools-grid">
-          <form className="tool-panel" onSubmit={saveMenu}>
+            <div className="tools-grid">
+              <form className="tool-panel" onSubmit={saveMenu}>
             <h2><ClipboardList size={20} /> Menu</h2>
             <div className="category-manager">
               <h3>Nhóm món</h3>
@@ -687,9 +722,78 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                 </section>
               ))}
             </div>
-          </form>
-
-        </div>
+              </form>
+            </div>
+          </>
+        ) : (
+          <section className="income-panel">
+            <div className="section-title">
+              <h1>Thu nhập</h1>
+              <p>{incomeRange.label}</p>
+            </div>
+            <div className="income-filters">
+              <div className="chips">
+                <button className={incomeMode === "day" ? "selected" : ""} onClick={() => setIncomeMode("day")}>Ngày</button>
+                <button className={incomeMode === "month" ? "selected" : ""} onClick={() => setIncomeMode("month")}>Tháng</button>
+                <button className={incomeMode === "year" ? "selected" : ""} onClick={() => setIncomeMode("year")}>Năm</button>
+              </div>
+              {incomeMode === "day" && <input type="date" value={incomeDay} onChange={(event) => setIncomeDay(event.target.value)} />}
+              {incomeMode === "month" && <input type="month" value={incomeMonth} onChange={(event) => setIncomeMonth(event.target.value)} />}
+              {incomeMode === "year" && <input type="number" min={2000} max={2100} value={incomeYear} onChange={(event) => setIncomeYear(event.target.value)} />}
+            </div>
+            <div className="income-summary">
+              <div className="stat-row">
+                <span>Thu</span>
+                <strong>{formatMoney(incomeSummary.revenue)}</strong>
+                <small>{paidOrdersInRange.length} đơn đã tính tiền</small>
+              </div>
+              <div className="stat-row">
+                <span>Chi</span>
+                <strong>{formatMoney(incomeSummary.expense)}</strong>
+                <small>{expensesInRange.length} khoản chi</small>
+              </div>
+              <div className={`stat-row ${incomeProfit >= 0 ? "accent" : ""}`}>
+                <span>Lợi nhuận</span>
+                <strong>{formatMoney(incomeProfit)}</strong>
+                <small>Thu trừ chi</small>
+              </div>
+            </div>
+            <div className="income-details">
+              <div className="tool-panel">
+                <h2>Doanh thu</h2>
+                {paidOrdersInRange.length ? (
+                  paidOrdersInRange.map((order) => (
+                    <div className="income-row" key={order.id}>
+                      <div>
+                        <strong>{order.tableNumber}</strong>
+                        <span>{String(order.paidAt).slice(0, 10)} · {order.items.length} món</span>
+                      </div>
+                      <strong>{formatMoney(order.total)}</strong>
+                    </div>
+                  ))
+                ) : (
+                  <p className="muted">Chưa có đơn đã tính tiền trong khoảng này.</p>
+                )}
+              </div>
+              <div className="tool-panel">
+                <h2>Chi phí</h2>
+                {expensesInRange.length ? (
+                  expensesInRange.map((item) => (
+                    <div className="income-row" key={item.id}>
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>{String(item.date).slice(0, 10)}{item.note ? ` · ${item.note}` : ""}</span>
+                      </div>
+                      <strong>{formatMoney(item.amount)}</strong>
+                    </div>
+                  ))
+                ) : (
+                  <p className="muted">Chưa có chi phí trong khoảng này.</p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </section>
   );

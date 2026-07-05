@@ -355,6 +355,81 @@ textarea {
   margin-top: 22px;
 }
 
+.admin-section-tabs {
+  background: #f1eee7;
+  border-radius: 8px;
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 4px;
+}
+
+.admin-section-tabs button {
+  background: transparent;
+  border-radius: 6px;
+  color: #47554d;
+  min-height: 38px;
+  padding: 8px 14px;
+}
+
+.admin-section-tabs button.active {
+  background: #214236;
+  color: #ffffff;
+}
+
+.income-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.income-filters,
+.income-summary,
+.income-details {
+  display: grid;
+  gap: 12px;
+}
+
+.income-filters {
+  align-items: end;
+  grid-template-columns: auto minmax(180px, 260px);
+  justify-content: start;
+}
+
+.income-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.income-summary .stat-row {
+  background: #ffffff;
+  border: 1px solid #e4ded2;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.income-summary small {
+  color: #667169;
+}
+
+.income-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.income-row {
+  align-items: center;
+  border-bottom: 1px solid #eee9df;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.income-row span {
+  color: #667169;
+  display: block;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
 .menu-admin-list {
   border-top: 1px solid #eee9df;
   display: grid;
