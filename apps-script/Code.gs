@@ -30,7 +30,7 @@ function doGet(e) {
     }
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(e.parameter.token);
@@ -49,7 +49,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(body.token);
@@ -70,6 +70,7 @@ function route_(action, payload) {
   if (action === "updateOrder") return updateOrder_(payload.order);
   if (action === "addExpense") return addExpense_(payload.expense);
   if (action === "setTableCount") return setTableCount_(payload.tableCount);
+  if (action === "setTableNames") return setTableNames_(payload.tableNames);
   throw new Error("Action không hợp lệ.");
 }
 
@@ -98,7 +99,7 @@ function loadData_() {
       }));
     return {
       id: order.id,
-      tableNumber: Number(order.tableNumber || 0),
+      tableNumber: String(order.tableNumber || ""),
       customerName: order.customerName || "",
       status: order.status || "open",
       createdAt: order.createdAt || "",
@@ -122,6 +123,7 @@ function loadData_() {
     expenses,
     stats: getDailyStats_(orders, expenses),
     tableCount: Number(getSetting_("tableCount") || 12),
+    tableNames: getTableNames_(),
   };
 }
 
@@ -158,7 +160,7 @@ function createOrder_(order) {
 
   appendObject_(SHEETS.orders, {
     id: orderId,
-    tableNumber: Number(order.tableNumber),
+    tableNumber: String(order.tableNumber),
     customerName: order.customerName || "Khách",
     status: "open",
     createdAt,
@@ -196,7 +198,7 @@ function updateOrder_(order) {
   const total = Number(order.total || 0);
   upsertObject_(SHEETS.orders, "id", {
     id: order.id,
-    tableNumber: Number(order.tableNumber),
+    tableNumber: String(order.tableNumber),
     customerName: order.customerName || "",
     status: order.status || "open",
     createdAt: order.createdAt || "",
@@ -237,6 +239,33 @@ function setTableCount_(tableCount) {
   const value = Math.max(1, Number(tableCount || 1));
   setSetting_("tableCount", String(value));
   return value;
+}
+
+function setTableNames_(tableNames) {
+  const names = (tableNames || [])
+    .map((name) => String(name || "").trim())
+    .filter(Boolean);
+  setSetting_("tableNames", JSON.stringify(names));
+  return names;
+}
+
+function getTableNames_() {
+  const raw = getSetting_("tableNames");
+  if (!raw) {
+    const count = Number(getSetting_("tableCount") || 12);
+    return Array.from({ length: count }, function (_, index) {
+      return "Bàn " + (index + 1);
+    });
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+  } catch (error) {
+    return String(raw)
+      .split(/[\n,]+/)
+      .map(function (name) { return name.trim(); })
+      .filter(Boolean);
+  }
 }
 
 function getDailyStats_(orders, expenses) {

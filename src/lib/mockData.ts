@@ -3,6 +3,7 @@ import { todayKey } from "./money";
 
 export const mockData: AppData = {
   tableCount: 12,
+  tableNames: ["Bàn 1", "Bàn 2", "Hoa Mai", "Hoa Đào", "Sân vườn"],
   menu: [
     { id: "cf-den", name: "Cafe đen", category: "Cafe", price: 22000, active: true },
     { id: "cf-sua", name: "Cafe sữa", category: "Cafe", price: 25000, active: true },
@@ -14,8 +15,8 @@ export const mockData: AppData = {
   orders: [
     {
       id: "demo-1",
-      tableNumber: 3,
-      customerName: "Bàn 3",
+      tableNumber: "Hoa Mai",
+      customerName: "Hoa Mai",
       status: "open",
       createdAt: new Date().toISOString(),
       paidAt: "",

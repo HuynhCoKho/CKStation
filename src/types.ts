@@ -18,7 +18,7 @@ export type OrderItem = {
 
 export type Order = {
   id: string;
-  tableNumber: number;
+  tableNumber: string;
   customerName: string;
   status: "open" | "paid" | "cancelled";
   createdAt: string;
@@ -49,4 +49,5 @@ export type AppData = {
   expenses: Expense[];
   stats: DailyStats;
   tableCount: number;
+  tableNames: string[];
 };

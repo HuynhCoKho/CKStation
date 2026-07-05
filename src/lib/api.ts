@@ -33,6 +33,7 @@ export const api = {
   updateOrder: (order: Order) => request<Order>("updateOrder", { order }, true),
   addExpense: (expense: Omit<Expense, "id">) => request<Expense>("addExpense", { expense }, true),
   setTableCount: (tableCount: number) => request<number>("setTableCount", { tableCount }, true),
+  setTableNames: (tableNames: string[]) => request<string[]>("setTableNames", { tableNames }, true),
 };
 
 function mockRequest(action: string, payload: Record<string, unknown>) {
@@ -44,6 +45,7 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   if (action === "updateOrder") return payload.order;
   if (action === "addExpense") return { id: crypto.randomUUID(), ...(payload.expense as object) };
   if (action === "setTableCount") return payload.tableCount;
+  if (action === "setTableNames") return payload.tableNames;
   return data;
 }
 

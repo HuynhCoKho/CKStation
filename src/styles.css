@@ -13,7 +13,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -174,7 +175,8 @@ label {
   gap: 6px;
 }
 
-input {
+input,
+textarea {
   background: #fbfaf7;
   border: 1px solid #d8d1c6;
   border-radius: 6px;
@@ -182,6 +184,11 @@ input {
   min-height: 42px;
   padding: 10px 12px;
   width: 100%;
+}
+
+textarea {
+  min-height: 82px;
+  resize: vertical;
 }
 
 .cart-row {
@@ -257,6 +264,18 @@ input {
 
 .stat-row.accent strong {
   color: #1d7f52;
+}
+
+.expense-compact,
+.table-name-form {
+  border-bottom: 1px solid #eee9df;
+  display: grid;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.expense-compact h2 {
+  font-size: 18px;
 }
 
 .table-grid {

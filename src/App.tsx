@@ -10,10 +10,17 @@ const cacheKey = "ckstation_cached_data";
 function readCachedData() {
   try {
     const raw = localStorage.getItem(cacheKey);
-    return raw ? (JSON.parse(raw) as AppData) : null;
+    return raw ? normalizeData(JSON.parse(raw) as AppData) : null;
   } catch {
     return null;
   }
+}
+
+function normalizeData(data: AppData) {
+  return {
+    ...data,
+    tableNames: data.tableNames || [],
+  };
 }
 
 export function App() {
@@ -28,7 +35,7 @@ export function App() {
     setLoading(true);
     setError("");
     try {
-      const nextData = await api.loadData();
+      const nextData = normalizeData(await api.loadData());
       setData(nextData);
       localStorage.setItem(cacheKey, JSON.stringify(nextData));
     } catch (err) {
@@ -82,9 +89,9 @@ export function App() {
 function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
   const activeMenu = data.menu.filter((item) => item.active);
   const categories = Array.from(new Set(activeMenu.map((item) => item.category)));
+  const tableOptions = data.tableNames?.length ? data.tableNames : Array.from({ length: data.tableCount }, (_, index) => `Bàn ${index + 1}`);
   const [category, setCategory] = useState(categories[0] || "");
-  const [tableNumber, setTableNumber] = useState(1);
-  const [customerName, setCustomerName] = useState("");
+  const [tableNumber, setTableNumber] = useState(tableOptions[0] || "Bàn 1");
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -127,12 +134,10 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
     setSubmitting(true);
     setOrderError("");
     try {
-      await api.createOrder({ tableNumber, customerName: customerName || `Bàn ${tableNumber}`, items: cart });
+      await api.createOrder({ tableNumber, customerName: tableNumber, items: cart });
       setCart([]);
-      setCustomerName("");
       setConfirming(false);
       setSuccessMessage("Đặt món thành công. Quán đã nhận đơn của bạn.");
-      onChanged();
     } catch (err) {
       setOrderError(err instanceof Error ? err.message : "Không gửi được đơn.");
     } finally {
@@ -176,11 +181,12 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
         {orderError && <p className="alert inline-alert">{orderError}</p>}
         <label>
           Bàn
-          <input type="number" min={1} max={data.tableCount} value={tableNumber} onChange={(e) => setTableNumber(Number(e.target.value))} />
-        </label>
-        <label>
-          Tên khách
-          <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Không bắt buộc" />
+          <input list="table-options" value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} placeholder="Chọn hoặc nhập tên bàn" />
+          <datalist id="table-options">
+            {tableOptions.map((name) => (
+              <option value={name} key={name} />
+            ))}
+          </datalist>
         </label>
         <div className="cart-list">
           {cart.map((item) => (
@@ -227,7 +233,6 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
             </div>
             <div className="confirm-summary">
               <p><strong>Bàn:</strong> {tableNumber}</p>
-              <p><strong>Tên khách:</strong> {customerName || `Bàn ${tableNumber}`}</p>
               {cart.map((item) => (
                 <div className="confirm-item" key={item.id}>
                   <span>{item.quantity} x {item.name}</span>
@@ -256,13 +261,22 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [token, setToken] = useState(localStorage.getItem("ck_admin_token") || "");
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
+  const [tableNamesText, setTableNamesText] = useState((data.tableNames || []).join(", "));
   const openOrders = data.orders.filter((order) => order.status === "open");
   const tableMap = useMemo(() => {
-    return Array.from({ length: data.tableCount }, (_, index) => {
-      const tableNumber = index + 1;
-      return { tableNumber, orders: openOrders.filter((order) => order.tableNumber === tableNumber) };
-    });
-  }, [data.tableCount, openOrders]);
+    const configuredTables = data.tableNames?.length ? data.tableNames : Array.from({ length: data.tableCount }, (_, index) => `Bàn ${index + 1}`);
+    const extraTables = openOrders
+      .map((order) => order.tableNumber)
+      .filter((tableName) => tableName && !configuredTables.includes(tableName));
+    return [...configuredTables, ...extraTables].map((tableNumber) => ({
+      tableNumber,
+      orders: openOrders.filter((order) => order.tableNumber === tableNumber),
+    }));
+  }, [data.tableCount, data.tableNames, openOrders]);
+
+  useEffect(() => {
+    setTableNamesText((data.tableNames || []).join(", "));
+  }, [data.tableNames]);
 
   function saveToken() {
     localStorage.setItem("ck_admin_token", token);
@@ -279,6 +293,16 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
     event.preventDefault();
     await api.addExpense(expense);
     setExpense({ date: todayKey(), name: "", amount: 0, note: "" });
+    onChanged();
+  }
+
+  async function saveTableNames(event: FormEvent) {
+    event.preventDefault();
+    const names = tableNamesText
+      .split(/[\n,]+/)
+      .map((name) => name.trim())
+      .filter(Boolean);
+    await api.setTableNames(names);
     onChanged();
   }
 
@@ -302,6 +326,14 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
           <span>Lợi nhuận</span>
           <strong>{formatMoney(data.stats.profit)}</strong>
         </div>
+        <form className="expense-compact" onSubmit={saveExpense}>
+          <h2><ReceiptText size={20} /> Ghi chi phí</h2>
+          <input type="date" value={expense.date} onChange={(e) => setExpense({ ...expense, date: e.target.value })} />
+          <input value={expense.name} onChange={(e) => setExpense({ ...expense, name: e.target.value })} placeholder="Tên chi phí" required />
+          <input type="number" value={expense.amount || ""} onChange={(e) => setExpense({ ...expense, amount: Number(e.target.value) })} placeholder="Số tiền" required />
+          <input value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.target.value })} placeholder="Ghi chú" />
+          <button className="primary"><Save size={18} /> Lưu chi phí</button>
+        </form>
         <label>
           Mã quản trị
           <input value={token} onChange={(e) => setToken(e.target.value)} type="password" placeholder="ADMIN_TOKEN" />
@@ -318,6 +350,13 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
             onChange={(e) => api.setTableCount(Number(e.target.value)).then(onChanged)}
           />
         </label>
+        <form className="table-name-form" onSubmit={saveTableNames}>
+          <label>
+            Danh sách bàn/khu vực
+            <textarea value={tableNamesText} onChange={(e) => setTableNamesText(e.target.value)} placeholder="Bàn 1, Bàn 2, Hoa Mai, Hoa Đào" />
+          </label>
+          <button className="primary"><Save size={18} /> Lưu danh sách</button>
+        </form>
       </aside>
 
       <div className="admin-main">
@@ -328,7 +367,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
         <div className="table-grid">
           {tableMap.map(({ tableNumber, orders }) => (
             <article className={`table-card ${orders.length ? "busy" : ""}`} key={tableNumber}>
-              <h3>Bàn {tableNumber}</h3>
+              <h3>{tableNumber}</h3>
               {!orders.length && <p>Trống</p>}
               {orders.map((order) => (
                 <div className="bill" key={order.id}>
@@ -384,14 +423,6 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
             </div>
           </form>
 
-          <form className="tool-panel" onSubmit={saveExpense}>
-            <h2><ReceiptText size={20} /> Chi phí</h2>
-            <input type="date" value={expense.date} onChange={(e) => setExpense({ ...expense, date: e.target.value })} />
-            <input value={expense.name} onChange={(e) => setExpense({ ...expense, name: e.target.value })} placeholder="Tên chi phí" required />
-            <input type="number" value={expense.amount || ""} onChange={(e) => setExpense({ ...expense, amount: Number(e.target.value) })} placeholder="Số tiền" required />
-            <input value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.target.value })} placeholder="Ghi chú" />
-            <button className="primary"><Save size={18} /> Ghi chi phí</button>
-          </form>
         </div>
       </div>
     </section>
