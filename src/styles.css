@@ -14,6 +14,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -176,6 +177,7 @@ label {
 }
 
 input,
+select,
 textarea {
   background: #fbfaf7;
   border: 1px solid #d8d1c6;

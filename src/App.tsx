@@ -107,11 +107,16 @@ export function App() {
 function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
   const activeMenu = data.menu.filter((item) => item.active);
   const categories = Array.from(new Set([...(data.categories || []), ...activeMenu.map((item) => item.category)].filter((name) => activeMenu.some((item) => item.category === name))));
+  const openOrders = data.orders.filter((order) => order.status === "open");
   const tableOptions = data.tables?.length
-    ? data.tables.map((table) => table.name)
+    ? data.tables
+        .map((table, index) => ({ table, index, label: tableLabel(table, index) }))
+        .filter(({ table, index }) => !table.occupied && !openOrders.some((order) => orderMatchesTable(order.tableNumber, table, index)))
+        .map(({ label }) => label)
     : data.tableNames?.length
-      ? data.tableNames
+      ? data.tableNames.map((name, index) => tableLabel({ name, occupied: false }, index))
       : Array.from({ length: data.tableCount }, (_, index) => `Bàn ${index + 1}`);
+  const tableOptionsKey = tableOptions.join("|");
   const [category, setCategory] = useState(categories[0] || "");
   const [tableNumber, setTableNumber] = useState(tableOptions[0] || "Bàn 1");
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -120,6 +125,16 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
   const [successMessage, setSuccessMessage] = useState("");
   const [orderError, setOrderError] = useState("");
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  useEffect(() => {
+    if (!tableOptions.length) {
+      setTableNumber("");
+      return;
+    }
+    if (!tableOptions.includes(tableNumber)) {
+      setTableNumber(tableOptions[0]);
+    }
+  }, [tableOptionsKey, tableNumber]);
 
   function addToCart(item: MenuItem) {
     setCart((items) => {
@@ -203,13 +218,15 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
         {orderError && <p className="alert inline-alert">{orderError}</p>}
         <label>
           Bàn
-          <input list="table-options" value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} placeholder="Chọn hoặc nhập tên bàn" />
-          <datalist id="table-options">
+          <select value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} disabled={!tableOptions.length}>
             {tableOptions.map((name) => (
-              <option value={name} key={name} />
+              <option value={name} key={name}>
+                {name}
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
+        {!tableOptions.length && <p className="muted">Hiện chưa có bàn trống để đặt món.</p>}
         <div className="cart-list">
           {cart.map((item) => (
             <article className="cart-row" key={item.id}>
@@ -241,7 +258,7 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
             </article>
           ))}
         </div>
-        <button className="primary" disabled={!cart.length || submitting}>
+        <button className="primary" disabled={!cart.length || !tableNumber || submitting}>
           <ReceiptText size={18} /> Gửi đơn
         </button>
       </form>
