@@ -358,8 +358,36 @@ textarea {
 .menu-admin-list {
   border-top: 1px solid #eee9df;
   display: grid;
-  gap: 10px;
+  gap: 14px;
   padding-top: 12px;
+}
+
+.menu-admin-group {
+  border: 1px solid #eee9df;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.menu-admin-group-title {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.menu-admin-group-title h3 {
+  margin: 0;
+}
+
+.menu-admin-group-title span {
+  color: #667169;
+  font-size: 13px;
+}
+
+.menu-admin-group-items {
+  display: grid;
+  gap: 8px;
 }
 
 .category-manager {

@@ -313,6 +313,16 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [adminError, setAdminError] = useState("");
   const openOrders = data.orders.filter((order) => order.status === "open");
   const categories = Array.from(new Set([...(data.categories || []), ...data.menu.map((item) => item.category)].filter(Boolean)));
+  const groupedMenu = [
+    ...categories.map((category) => ({
+      category,
+      items: data.menu.filter((item) => item.category === category),
+    })),
+    {
+      category: "Chưa phân nhóm",
+      items: data.menu.filter((item) => !item.category),
+    },
+  ].filter((group) => group.items.length);
   const tableMap = useMemo(() => {
     const configuredTables = data.tables?.length
       ? data.tables
@@ -629,16 +639,26 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
             </label>
             <button className="primary"><Save size={18} /> Lưu món</button>
             <div className="menu-admin-list">
-              {data.menu.map((item) => (
-                <div className="menu-admin-row" key={item.id}>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <span>{item.category} · {formatMoney(item.price)} · {item.active ? "Đang bán" : "Đã ẩn"}</span>
+              {groupedMenu.map((group) => (
+                <section className="menu-admin-group" key={group.category}>
+                  <div className="menu-admin-group-title">
+                    <h3>{group.category}</h3>
+                    <span>{group.items.length} món</span>
                   </div>
-                  <button type="button" onClick={() => setMenuDraft(item)}>Sửa</button>
-                  <button type="button" onClick={() => hideMenuItem(item.id)}>Ẩn</button>
-                  <button type="button" onClick={() => removeMenuItem(item)}>Xóa</button>
-                </div>
+                  <div className="menu-admin-group-items">
+                    {group.items.map((item) => (
+                      <div className="menu-admin-row" key={item.id}>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <span>{formatMoney(item.price)} · {item.active ? "Đang bán" : "Đã ẩn"}</span>
+                        </div>
+                        <button type="button" onClick={() => setMenuDraft(item)}>Sửa</button>
+                        <button type="button" onClick={() => hideMenuItem(item.id)}>Ẩn</button>
+                        <button type="button" onClick={() => removeMenuItem(item)}>Xóa</button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </form>
