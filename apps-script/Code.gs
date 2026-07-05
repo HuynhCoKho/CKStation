@@ -21,8 +21,26 @@ function setup() {
   seedMenuIfEmpty_();
 }
 
-function doGet() {
-  return json_({ ok: true, data: { service: "CK Station API", time: new Date().toISOString() } });
+function doGet(e) {
+  try {
+    setup();
+    const action = e.parameter.action;
+    if (!action) {
+      return output_(e, { ok: true, data: { service: "CK Station API", time: new Date().toISOString() } });
+    }
+
+    const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount"];
+
+    if (adminActions.indexOf(action) >= 0) {
+      verifyAdmin_(e.parameter.token);
+    }
+
+    const data = route_(action, payload);
+    return output_(e, { ok: true, data });
+  } catch (error) {
+    return output_(e, { ok: false, error: error.message || String(error) });
+  }
 }
 
 function doPost(e) {
@@ -321,4 +339,15 @@ function seedMenuIfEmpty_() {
 
 function json_(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function output_(e, payload) {
+  const callback = e && e.parameter && e.parameter.callback;
+  if (!callback) return json_(payload);
+  if (!/^[A-Za-z0-9_.$]+$/.test(callback)) {
+    return json_({ ok: false, error: "Callback không hợp lệ." });
+  }
+  return ContentService
+    .createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }

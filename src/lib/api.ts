@@ -15,17 +15,11 @@ async function request<T>(action: string, payload: Record<string, unknown> = {},
     return mockRequest(action, payload) as T;
   }
 
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      action,
-      token: admin ? adminToken() : "",
-      payload,
-    }),
+  const result = await jsonp<ApiResponse<T>>(apiUrl, {
+    action,
+    token: admin ? adminToken() : "",
+    payload: JSON.stringify(payload),
   });
-
-  const result = (await response.json()) as ApiResponse<T>;
   if (!result.ok) throw new Error(result.error || "Không xử lý được yêu cầu.");
   return result.data;
 }
@@ -51,4 +45,36 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   if (action === "addExpense") return { id: crypto.randomUUID(), ...(payload.expense as object) };
   if (action === "setTableCount") return payload.tableCount;
   return data;
+}
+
+function jsonp<T>(url: string, params: Record<string, string>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const callback = `ckstation_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Không kết nối được Apps Script."));
+    }, 15000);
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      delete (window as unknown as Record<string, unknown>)[callback];
+      script.remove();
+    }
+
+    (window as unknown as Record<string, (value: T) => void>)[callback] = (value) => {
+      cleanup();
+      resolve(value);
+    };
+
+    const target = new URL(url);
+    target.searchParams.set("callback", callback);
+    Object.entries(params).forEach(([key, value]) => target.searchParams.set(key, value));
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Không tải được Apps Script."));
+    };
+    script.src = target.toString();
+    document.head.appendChild(script);
+  });
 }
