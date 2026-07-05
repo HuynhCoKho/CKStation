@@ -7,7 +7,8 @@ import type { AppData, Expense, MenuItem, Order, OrderItem } from "./types";
 type View = "customer" | "admin";
 
 export function App() {
-  const isPublicMenu = window.location.pathname.toLowerCase().endsWith("/menu");
+  const normalizedPath = window.location.pathname.toLowerCase().replace(/\/$/, "");
+  const isPublicMenu = normalizedPath.endsWith("/menu") || normalizedPath.endsWith("/menu.html");
   const [view, setView] = useState<View>("customer");
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);

@@ -2,8 +2,10 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 const source = join("dist", "index.html");
-const target = join("dist", "Menu", "index.html");
-const html = readFileSync(source, "utf8").replaceAll("./assets/", "/CKStation/assets/");
+const menuIndex = join("dist", "Menu", "index.html");
+const menuHtml = join("dist", "Menu.html");
+const html = readFileSync(source, "utf8");
 
-mkdirSync(dirname(target), { recursive: true });
-writeFileSync(target, html);
+mkdirSync(dirname(menuIndex), { recursive: true });
+writeFileSync(menuIndex, html);
+writeFileSync(menuHtml, html);
