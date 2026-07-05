@@ -43,6 +43,11 @@ export type DailyStats = {
   paidOrders: number;
 };
 
+export type TableState = {
+  name: string;
+  occupied: boolean;
+};
+
 export type AppData = {
   menu: MenuItem[];
   orders: Order[];
@@ -50,4 +55,5 @@ export type AppData = {
   stats: DailyStats;
   tableCount: number;
   tableNames: string[];
+  tables: TableState[];
 };

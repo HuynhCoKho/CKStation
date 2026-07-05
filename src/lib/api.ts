@@ -1,4 +1,4 @@
-import type { AppData, Expense, MenuItem, Order } from "../types";
+import type { AppData, Expense, MenuItem, Order, TableState } from "../types";
 import { mockData } from "./mockData";
 
 const apiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/^\uFEFF/, "").trim();
@@ -34,6 +34,7 @@ export const api = {
   addExpense: (expense: Omit<Expense, "id">) => request<Expense>("addExpense", { expense }, true),
   setTableCount: (tableCount: number) => request<number>("setTableCount", { tableCount }, true),
   setTableNames: (tableNames: string[]) => request<string[]>("setTableNames", { tableNames }, true),
+  setTables: (tables: TableState[]) => request<TableState[]>("setTables", { tables }, true),
 };
 
 function mockRequest(action: string, payload: Record<string, unknown>) {
@@ -46,6 +47,7 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   if (action === "addExpense") return { id: crypto.randomUUID(), ...(payload.expense as object) };
   if (action === "setTableCount") return payload.tableCount;
   if (action === "setTableNames") return payload.tableNames;
+  if (action === "setTables") return payload.tables;
   return data;
 }
 

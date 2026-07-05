@@ -30,7 +30,7 @@ function doGet(e) {
     }
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(e.parameter.token);
@@ -49,7 +49,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(body.token);
@@ -71,6 +71,7 @@ function route_(action, payload) {
   if (action === "addExpense") return addExpense_(payload.expense);
   if (action === "setTableCount") return setTableCount_(payload.tableCount);
   if (action === "setTableNames") return setTableNames_(payload.tableNames);
+  if (action === "setTables") return setTables_(payload.tables);
   throw new Error("Action không hợp lệ.");
 }
 
@@ -124,6 +125,7 @@ function loadData_() {
     stats: getDailyStats_(orders, expenses),
     tableCount: Number(getSetting_("tableCount") || 12),
     tableNames: getTableNames_(),
+    tables: getTables_(),
   };
 }
 
@@ -246,7 +248,24 @@ function setTableNames_(tableNames) {
     .map((name) => String(name || "").trim())
     .filter(Boolean);
   setSetting_("tableNames", JSON.stringify(names));
+  setSetting_("tables", JSON.stringify(names.map(function (name) {
+    return { name: name, occupied: false };
+  })));
   return names;
+}
+
+function setTables_(tables) {
+  const saved = (tables || [])
+    .map(function (table) {
+      return {
+        name: String(table.name || "").trim(),
+        occupied: table.occupied === true,
+      };
+    })
+    .filter(function (table) { return table.name; });
+  setSetting_("tables", JSON.stringify(saved));
+  setSetting_("tableNames", JSON.stringify(saved.map(function (table) { return table.name; })));
+  return saved;
 }
 
 function getTableNames_() {
@@ -266,6 +285,28 @@ function getTableNames_() {
       .map(function (name) { return name.trim(); })
       .filter(Boolean);
   }
+}
+
+function getTables_() {
+  const raw = getSetting_("tables");
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(function (table) {
+            return {
+              name: String(table.name || "").trim(),
+              occupied: table.occupied === true,
+            };
+          })
+          .filter(function (table) { return table.name; });
+      }
+    } catch (error) {}
+  }
+  return getTableNames_().map(function (name) {
+    return { name: name, occupied: false };
+  });
 }
 
 function getDailyStats_(orders, expenses) {

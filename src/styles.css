@@ -278,6 +278,33 @@ textarea {
   font-size: 18px;
 }
 
+.table-admin-list {
+  display: grid;
+  gap: 8px;
+}
+
+.table-admin-row {
+  border: 1px solid #eee9df;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.table-admin-row span {
+  color: #667169;
+  font-size: 13px;
+}
+
+.table-admin-row button,
+.table-name-form > button:not(.primary) {
+  background: #ece7dd;
+  border-radius: 6px;
+  color: #29362f;
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
 .table-grid {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }

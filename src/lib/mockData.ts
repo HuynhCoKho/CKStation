@@ -4,6 +4,13 @@ import { todayKey } from "./money";
 export const mockData: AppData = {
   tableCount: 12,
   tableNames: ["Bàn 1", "Bàn 2", "Hoa Mai", "Hoa Đào", "Sân vườn"],
+  tables: [
+    { name: "Bàn 1", occupied: false },
+    { name: "Bàn 2", occupied: false },
+    { name: "Hoa Mai", occupied: true },
+    { name: "Hoa Đào", occupied: false },
+    { name: "Sân vườn", occupied: false },
+  ],
   menu: [
     { id: "cf-den", name: "Cafe đen", category: "Cafe", price: 22000, active: true },
     { id: "cf-sua", name: "Cafe sữa", category: "Cafe", price: 25000, active: true },

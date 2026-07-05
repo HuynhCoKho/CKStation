@@ -2,7 +2,7 @@ import { ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, RefreshCw, Save,
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "./lib/api";
 import { formatMoney, todayKey } from "./lib/money";
-import type { AppData, Expense, MenuItem, Order, OrderItem } from "./types";
+import type { AppData, Expense, MenuItem, Order, OrderItem, TableState } from "./types";
 
 type View = "customer" | "admin";
 const cacheKey = "ckstation_cached_data";
@@ -17,9 +17,14 @@ function readCachedData() {
 }
 
 function normalizeData(data: AppData) {
+  const tableNames = data.tableNames || [];
+  const tables = data.tables?.length
+    ? data.tables
+    : tableNames.map((name) => ({ name, occupied: false }));
   return {
     ...data,
-    tableNames: data.tableNames || [],
+    tableNames,
+    tables,
   };
 }
 
@@ -89,7 +94,11 @@ export function App() {
 function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
   const activeMenu = data.menu.filter((item) => item.active);
   const categories = Array.from(new Set(activeMenu.map((item) => item.category)));
-  const tableOptions = data.tableNames?.length ? data.tableNames : Array.from({ length: data.tableCount }, (_, index) => `Bàn ${index + 1}`);
+  const tableOptions = data.tables?.length
+    ? data.tables.map((table) => table.name)
+    : data.tableNames?.length
+      ? data.tableNames
+      : Array.from({ length: data.tableCount }, (_, index) => `Bàn ${index + 1}`);
   const [category, setCategory] = useState(categories[0] || "");
   const [tableNumber, setTableNumber] = useState(tableOptions[0] || "Bàn 1");
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -261,22 +270,24 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [token, setToken] = useState(localStorage.getItem("ck_admin_token") || "");
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
-  const [tableNamesText, setTableNamesText] = useState((data.tableNames || []).join(", "));
+  const [tableDraft, setTableDraft] = useState("");
+  const [editingTableName, setEditingTableName] = useState("");
   const openOrders = data.orders.filter((order) => order.status === "open");
   const tableMap = useMemo(() => {
-    const configuredTables = data.tableNames?.length ? data.tableNames : Array.from({ length: data.tableCount }, (_, index) => `Bàn ${index + 1}`);
+    const configuredTables = data.tables?.length
+      ? data.tables
+      : data.tableNames?.length
+        ? data.tableNames.map((name) => ({ name, occupied: false }))
+        : Array.from({ length: data.tableCount }, (_, index) => ({ name: `Bàn ${index + 1}`, occupied: false }));
     const extraTables = openOrders
       .map((order) => order.tableNumber)
-      .filter((tableName) => tableName && !configuredTables.includes(tableName));
-    return [...configuredTables, ...extraTables].map((tableNumber) => ({
-      tableNumber,
-      orders: openOrders.filter((order) => order.tableNumber === tableNumber),
+      .filter((tableName) => tableName && !configuredTables.some((table) => table.name === tableName))
+      .map((name) => ({ name, occupied: false }));
+    return [...configuredTables, ...extraTables].map((table) => ({
+      table,
+      orders: openOrders.filter((order) => order.tableNumber === table.name),
     }));
-  }, [data.tableCount, data.tableNames, openOrders]);
-
-  useEffect(() => {
-    setTableNamesText((data.tableNames || []).join(", "));
-  }, [data.tableNames]);
+  }, [data.tableCount, data.tableNames, data.tables, openOrders]);
 
   function saveToken() {
     localStorage.setItem("ck_admin_token", token);
@@ -296,14 +307,27 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
     onChanged();
   }
 
-  async function saveTableNames(event: FormEvent) {
+  async function saveTable(event: FormEvent) {
     event.preventDefault();
-    const names = tableNamesText
-      .split(/[\n,]+/)
-      .map((name) => name.trim())
-      .filter(Boolean);
-    await api.setTableNames(names);
+    const name = tableDraft.trim();
+    if (!name) return;
+    const currentTables = data.tables?.length ? data.tables : data.tableNames.map((tableName) => ({ name: tableName, occupied: false }));
+    const withoutEdited = currentTables.filter((table) => table.name !== editingTableName && table.name !== name);
+    const existing = currentTables.find((table) => table.name === editingTableName);
+    await api.setTables([...withoutEdited, { name, occupied: existing?.occupied || false }]);
+    setTableDraft("");
+    setEditingTableName("");
     onChanged();
+  }
+
+  async function updateTables(nextTables: TableState[]) {
+    await api.setTables(nextTables);
+    onChanged();
+  }
+
+  function editTable(table: TableState) {
+    setTableDraft(table.name);
+    setEditingTableName(table.name);
   }
 
   async function updateOrder(order: Order, status: Order["status"]) {
@@ -350,12 +374,42 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
             onChange={(e) => api.setTableCount(Number(e.target.value)).then(onChanged)}
           />
         </label>
-        <form className="table-name-form" onSubmit={saveTableNames}>
+        <form className="table-name-form" onSubmit={saveTable}>
           <label>
-            Danh sách bàn/khu vực
-            <textarea value={tableNamesText} onChange={(e) => setTableNamesText(e.target.value)} placeholder="Bàn 1, Bàn 2, Hoa Mai, Hoa Đào" />
+            Quản lý bàn
+            <input value={tableDraft} onChange={(e) => setTableDraft(e.target.value)} placeholder="Hoa Mai, Hoa Đào..." />
           </label>
-          <button className="primary"><Save size={18} /> Lưu danh sách</button>
+          <button className="primary"><Save size={18} /> {editingTableName ? "Lưu tên bàn" : "Thêm bàn"}</button>
+          {editingTableName && (
+            <button type="button" onClick={() => { setEditingTableName(""); setTableDraft(""); }}>
+              Hủy sửa
+            </button>
+          )}
+          <div className="table-admin-list">
+            {(data.tables?.length ? data.tables : data.tableNames.map((name) => ({ name, occupied: false }))).map((table) => (
+              <div className="table-admin-row" key={table.name}>
+                <strong>{table.name}</strong>
+                <span>{table.occupied ? "Đang có khách" : "Trống"}</span>
+                <button type="button" onClick={() => editTable(table)}>Sửa</button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateTables((data.tables?.length ? data.tables : data.tableNames.map((name) => ({ name, occupied: false }))).map((item) =>
+                      item.name === table.name ? { ...item, occupied: !item.occupied } : item,
+                    ))
+                  }
+                >
+                  {table.occupied ? "Đánh dấu trống" : "Đánh dấu bận"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateTables((data.tables?.length ? data.tables : data.tableNames.map((name) => ({ name, occupied: false }))).filter((item) => item.name !== table.name))}
+                >
+                  Xóa
+                </button>
+              </div>
+            ))}
+          </div>
         </form>
       </aside>
 
@@ -365,10 +419,10 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
           <p>{openOrders.length} đơn mở</p>
         </div>
         <div className="table-grid">
-          {tableMap.map(({ tableNumber, orders }) => (
-            <article className={`table-card ${orders.length ? "busy" : ""}`} key={tableNumber}>
-              <h3>{tableNumber}</h3>
-              {!orders.length && <p>Trống</p>}
+          {tableMap.map(({ table, orders }) => (
+            <article className={`table-card ${orders.length || table.occupied ? "busy" : ""}`} key={table.name}>
+              <h3>{table.name}</h3>
+              {!orders.length && <p>{table.occupied ? "Đang có khách" : "Trống"}</p>}
               {orders.map((order) => (
                 <div className="bill" key={order.id}>
                   {order.items.map((item) => (
