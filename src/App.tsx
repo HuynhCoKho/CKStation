@@ -5,20 +5,32 @@ import { formatMoney, todayKey } from "./lib/money";
 import type { AppData, Expense, MenuItem, Order, OrderItem } from "./types";
 
 type View = "customer" | "admin";
+const cacheKey = "ckstation_cached_data";
+
+function readCachedData() {
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    return raw ? (JSON.parse(raw) as AppData) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function App() {
   const normalizedPath = window.location.pathname.toLowerCase().replace(/\/$/, "");
   const isPublicMenu = normalizedPath.endsWith("/menu") || normalizedPath.endsWith("/menu.html");
   const [view, setView] = useState<View>("customer");
-  const [data, setData] = useState<AppData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<AppData | null>(() => readCachedData());
+  const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
 
   async function refresh() {
     setLoading(true);
     setError("");
     try {
-      setData(await api.loadData());
+      const nextData = await api.loadData();
+      setData(nextData);
+      localStorage.setItem(cacheKey, JSON.stringify(nextData));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không tải được dữ liệu.");
     } finally {
@@ -29,6 +41,13 @@ export function App() {
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (isPublicMenu || view !== "admin") return;
+    refresh();
+    const interval = window.setInterval(refresh, 15000);
+    return () => window.clearInterval(interval);
+  }, [isPublicMenu, view]);
 
   return (
     <main>
@@ -54,8 +73,8 @@ export function App() {
 
       {error && <p className="alert">{error}</p>}
       {loading && <p className="loading">Đang tải dữ liệu...</p>}
-      {!loading && data && (isPublicMenu || view === "customer") && <CustomerPage data={data} onChanged={refresh} />}
-      {!loading && data && !isPublicMenu && view === "admin" && <AdminPage data={data} onChanged={refresh} />}
+      {data && (isPublicMenu || view === "customer") && <CustomerPage data={data} onChanged={refresh} />}
+      {data && !isPublicMenu && view === "admin" && <AdminPage data={data} onChanged={refresh} />}
     </main>
   );
 }
@@ -67,6 +86,10 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
   const [tableNumber, setTableNumber] = useState(1);
   const [customerName, setCustomerName] = useState("");
   const [cart, setCart] = useState<OrderItem[]>([]);
+  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [orderError, setOrderError] = useState("");
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   function addToCart(item: MenuItem) {
@@ -95,10 +118,26 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
   async function submitOrder(event: FormEvent) {
     event.preventDefault();
     if (!cart.length) return;
-    await api.createOrder({ tableNumber, customerName: customerName || `Bàn ${tableNumber}`, items: cart });
-    setCart([]);
-    setCustomerName("");
-    onChanged();
+    setSuccessMessage("");
+    setOrderError("");
+    setConfirming(true);
+  }
+
+  async function confirmOrder() {
+    setSubmitting(true);
+    setOrderError("");
+    try {
+      await api.createOrder({ tableNumber, customerName: customerName || `Bàn ${tableNumber}`, items: cart });
+      setCart([]);
+      setCustomerName("");
+      setConfirming(false);
+      setSuccessMessage("Đặt món thành công. Quán đã nhận đơn của bạn.");
+      onChanged();
+    } catch (err) {
+      setOrderError(err instanceof Error ? err.message : "Không gửi được đơn.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -133,6 +172,8 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
           <h2>Món đã chọn</h2>
           <p>{formatMoney(total)}</p>
         </div>
+        {successMessage && <p className="success">{successMessage}</p>}
+        {orderError && <p className="alert inline-alert">{orderError}</p>}
         <label>
           Bàn
           <input type="number" min={1} max={data.tableCount} value={tableNumber} onChange={(e) => setTableNumber(Number(e.target.value))} />
@@ -172,10 +213,41 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
             </article>
           ))}
         </div>
-        <button className="primary" disabled={!cart.length}>
+        <button className="primary" disabled={!cart.length || submitting}>
           <ReceiptText size={18} /> Gửi đơn
         </button>
       </form>
+
+      {confirming && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+            <div className="section-title">
+              <h2 id="confirm-title">Xác nhận đặt món</h2>
+              <p>{formatMoney(total)}</p>
+            </div>
+            <div className="confirm-summary">
+              <p><strong>Bàn:</strong> {tableNumber}</p>
+              <p><strong>Tên khách:</strong> {customerName || `Bàn ${tableNumber}`}</p>
+              {cart.map((item) => (
+                <div className="confirm-item" key={item.id}>
+                  <span>{item.quantity} x {item.name}</span>
+                  <strong>{formatMoney(item.price * item.quantity)}</strong>
+                  {item.note && <small>Ghi chú: {item.note}</small>}
+                </div>
+              ))}
+            </div>
+            {orderError && <p className="alert inline-alert">{orderError}</p>}
+            <div className="modal-actions">
+              <button type="button" onClick={() => setConfirming(false)} disabled={submitting}>
+                Quay lại
+              </button>
+              <button className="primary" type="button" onClick={confirmOrder} disabled={submitting}>
+                <ReceiptText size={18} /> {submitting ? "Đang gửi..." : "Xác nhận"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
