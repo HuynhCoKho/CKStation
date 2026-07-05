@@ -1,7 +1,7 @@
 import { ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, RefreshCw, Save, Settings, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "./lib/api";
-import { formatMoney, todayKey } from "./lib/money";
+import { formatDateVN, formatMoney, formatMonthVN, todayKey } from "./lib/money";
 import type { AppData, Expense, MenuItem, Order, OrderItem, TableState } from "./types";
 
 type View = "customer" | "admin";
@@ -351,9 +351,9 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   }, [data.tableCount, data.tableNames, data.tables, openOrders]);
   const incomeRange =
     incomeMode === "day"
-      ? { label: incomeDay, start: incomeDay, end: incomeDay }
+      ? { label: formatDateVN(incomeDay), start: incomeDay, end: incomeDay }
       : incomeMode === "month"
-        ? { label: incomeMonth, start: `${incomeMonth}-01`, end: `${incomeMonth}-31` }
+        ? { label: formatMonthVN(incomeMonth), start: `${incomeMonth}-01`, end: `${incomeMonth}-31` }
         : { label: incomeYear, start: `${incomeYear}-01-01`, end: `${incomeYear}-12-31` };
   const paidOrdersInRange = data.orders.filter((order) => {
     const paidDate = String(order.paidAt || "").slice(0, 10);
@@ -766,7 +766,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                     <div className="income-row" key={order.id}>
                       <div>
                         <strong>{order.tableNumber}</strong>
-                        <span>{String(order.paidAt).slice(0, 10)} · {order.items.length} món</span>
+                        <span>{formatDateVN(order.paidAt)} · {order.items.length} món</span>
                       </div>
                       <strong>{formatMoney(order.total)}</strong>
                     </div>
@@ -782,7 +782,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                     <div className="income-row" key={item.id}>
                       <div>
                         <strong>{item.name}</strong>
-                        <span>{String(item.date).slice(0, 10)}{item.note ? ` · ${item.note}` : ""}</span>
+                        <span>{formatDateVN(item.date)}{item.note ? ` · ${item.note}` : ""}</span>
                       </div>
                       <strong>{formatMoney(item.amount)}</strong>
                     </div>
