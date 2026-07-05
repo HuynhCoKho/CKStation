@@ -30,6 +30,7 @@ export const api = {
     request<Order>("createOrder", { order }),
   saveMenuItem: (item: Partial<MenuItem>) => request<MenuItem>("saveMenuItem", { item }, true),
   deleteMenuItem: (id: string) => request<MenuItem>("deleteMenuItem", { id }, true),
+  removeMenuItem: (id: string) => request<MenuItem>("removeMenuItem", { id }, true),
   updateOrder: (order: Order) => request<Order>("updateOrder", { order }, true),
   addExpense: (expense: Omit<Expense, "id">) => request<Expense>("addExpense", { expense }, true),
   setTableCount: (tableCount: number) => request<number>("setTableCount", { tableCount }, true),
@@ -44,6 +45,7 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   if (action === "createOrder") return { id: crypto.randomUUID(), ...(payload.order as object) };
   if (action === "saveMenuItem") return { id: crypto.randomUUID(), active: true, ...(payload.item as object) };
   if (action === "deleteMenuItem") return data.menu[0];
+  if (action === "removeMenuItem") return data.menu[0];
   if (action === "updateOrder") return payload.order;
   if (action === "addExpense") return { id: crypto.randomUUID(), ...(payload.expense as object) };
   if (action === "setTableCount") return payload.tableCount;

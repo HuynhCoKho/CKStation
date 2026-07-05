@@ -30,7 +30,7 @@ function doGet(e) {
     }
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(e.parameter.token);
@@ -49,7 +49,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(body.token);
@@ -67,6 +67,7 @@ function route_(action, payload) {
   if (action === "createOrder") return createOrder_(payload.order);
   if (action === "saveMenuItem") return saveMenuItem_(payload.item);
   if (action === "deleteMenuItem") return deleteMenuItem_(payload.id);
+  if (action === "removeMenuItem") return removeMenuItem_(payload.id);
   if (action === "updateOrder") return updateOrder_(payload.order);
   if (action === "addExpense") return addExpense_(payload.expense);
   if (action === "setTableCount") return setTableCount_(payload.tableCount);
@@ -228,6 +229,16 @@ function deleteMenuItem_(id) {
   if (!item) throw new Error("Không tìm thấy món.");
   item.active = false;
   upsertObject_(SHEETS.menu, "id", item);
+  return item;
+}
+
+function removeMenuItem_(id) {
+  const sheet = getSpreadsheet_().getSheetByName(SHEETS.menu);
+  const rows = readObjects_(SHEETS.menu);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) throw new Error("Không tìm thấy món.");
+  const item = rows[index];
+  sheet.deleteRow(index + 2);
   return item;
 }
 

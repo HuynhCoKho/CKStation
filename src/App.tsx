@@ -389,9 +389,9 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   }
 
   async function deleteCategory(category: string) {
-    if (data.menu.some((item) => item.category === category)) {
+    if (data.menu.some((item) => item.category === category && item.active)) {
       setAdminMessage("");
-      setAdminError("Nhóm này đang có món. Hãy sửa hoặc ẩn các món trong nhóm trước khi xóa nhóm.");
+      setAdminError("Nhóm này còn món đang bán. Hãy sửa, ẩn hoặc xóa các món trong nhóm trước khi xóa nhóm.");
       return;
     }
     try {
@@ -408,6 +408,31 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   function editCategory(category: string) {
     setCategoryDraft(category);
     setEditingCategory(category);
+  }
+
+  async function hideMenuItem(id: string) {
+    try {
+      await api.deleteMenuItem(id);
+      setAdminError("");
+      setAdminMessage("Đã ẩn món.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không ẩn được món.");
+    }
+  }
+
+  async function removeMenuItem(item: MenuItem) {
+    if (!window.confirm(`Xóa hẳn món "${item.name}" khỏi menu?`)) return;
+    try {
+      await api.removeMenuItem(item.id);
+      setAdminError("");
+      setAdminMessage("Đã xóa món.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không xóa được món.");
+    }
   }
 
   async function updateOrder(order: Order, status: Order["status"]) {
@@ -589,7 +614,8 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                     <span>{item.category} · {formatMoney(item.price)} · {item.active ? "Đang bán" : "Đã ẩn"}</span>
                   </div>
                   <button type="button" onClick={() => setMenuDraft(item)}>Sửa</button>
-                  <button type="button" onClick={() => api.deleteMenuItem(item.id).then(onChanged)}>Ẩn</button>
+                  <button type="button" onClick={() => hideMenuItem(item.id)}>Ẩn</button>
+                  <button type="button" onClick={() => removeMenuItem(item)}>Xóa</button>
                 </div>
               ))}
             </div>
