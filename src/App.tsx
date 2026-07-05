@@ -1,7 +1,7 @@
 import { ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, RefreshCw, Save, Settings, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "./lib/api";
-import { formatDateVN, formatMoney, formatMonthVN, todayKey } from "./lib/money";
+import { formatDateVN, formatMoney, formatMonthVN, parseDateVN, parseMonthVN, todayKey } from "./lib/money";
 import type { AppData, Expense, MenuItem, Order, OrderItem, TableState } from "./types";
 
 type View = "customer" | "admin";
@@ -43,6 +43,56 @@ function orderMatchesTable(orderTable: string, table: TableState, index: number)
 
 function compareMenuItemName(a: MenuItem, b: MenuItem) {
   return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
+}
+
+function DateVNInput({ value, onChange, required = false }: { value: string; onChange: (value: string) => void; required?: boolean }) {
+  const [text, setText] = useState(formatDateVN(value));
+
+  useEffect(() => {
+    setText(formatDateVN(value));
+  }, [value]);
+
+  function commit() {
+    const parsed = parseDateVN(text);
+    if (parsed) {
+      onChange(parsed);
+      setText(formatDateVN(parsed));
+    } else {
+      setText(formatDateVN(value));
+    }
+  }
+
+  return (
+    <input
+      inputMode="numeric"
+      pattern="\\d{1,2}/\\d{1,2}/\\d{4}"
+      placeholder="dd/mm/yyyy"
+      required={required}
+      value={text}
+      onBlur={commit}
+      onChange={(event) => setText(event.target.value)}
+    />
+  );
+}
+
+function MonthVNInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [text, setText] = useState(formatMonthVN(value));
+
+  useEffect(() => {
+    setText(formatMonthVN(value));
+  }, [value]);
+
+  function commit() {
+    const parsed = parseMonthVN(text);
+    if (parsed) {
+      onChange(parsed);
+      setText(formatMonthVN(parsed));
+    } else {
+      setText(formatMonthVN(value));
+    }
+  }
+
+  return <input inputMode="numeric" pattern="\\d{1,2}/\\d{4}" placeholder="mm/yyyy" value={text} onBlur={commit} onChange={(event) => setText(event.target.value)} />;
 }
 
 export function App() {
@@ -544,7 +594,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
         </div>
         <form className="expense-compact" onSubmit={saveExpense}>
           <h2><ReceiptText size={20} /> Ghi chi phí</h2>
-          <input type="date" value={expense.date} onChange={(e) => setExpense({ ...expense, date: e.target.value })} />
+          <DateVNInput value={expense.date} onChange={(date) => setExpense({ ...expense, date })} required />
           <input value={expense.name} onChange={(e) => setExpense({ ...expense, name: e.target.value })} placeholder="Tên chi phí" required />
           <input type="number" value={expense.amount || ""} onChange={(e) => setExpense({ ...expense, amount: Number(e.target.value) })} placeholder="Số tiền" required />
           <input value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.target.value })} placeholder="Ghi chú" />
@@ -737,8 +787,8 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                 <button className={incomeMode === "month" ? "selected" : ""} onClick={() => setIncomeMode("month")}>Tháng</button>
                 <button className={incomeMode === "year" ? "selected" : ""} onClick={() => setIncomeMode("year")}>Năm</button>
               </div>
-              {incomeMode === "day" && <input type="date" value={incomeDay} onChange={(event) => setIncomeDay(event.target.value)} />}
-              {incomeMode === "month" && <input type="month" value={incomeMonth} onChange={(event) => setIncomeMonth(event.target.value)} />}
+              {incomeMode === "day" && <DateVNInput value={incomeDay} onChange={setIncomeDay} />}
+              {incomeMode === "month" && <MonthVNInput value={incomeMonth} onChange={setIncomeMonth} />}
               {incomeMode === "year" && <input type="number" min={2000} max={2100} value={incomeYear} onChange={(event) => setIncomeYear(event.target.value)} />}
             </div>
             <div className="income-summary">
