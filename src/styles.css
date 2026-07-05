@@ -185,15 +185,34 @@ input {
 }
 
 .cart-row {
-  align-items: center;
   border-bottom: 1px solid #eee9df;
   display: grid;
-  gap: 8px;
-  grid-template-columns: 1fr 72px;
-  padding: 10px 0;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  padding: 14px 0;
 }
 
-.cart-row > input:last-of-type {
+.cart-item-title {
+  align-content: center;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cart-item-title strong {
+  overflow-wrap: anywhere;
+}
+
+.cart-item-title span {
+  color: #b34f2a;
+  font-weight: 700;
+}
+
+.qty-input {
+  align-self: start;
+}
+
+.note-field {
   grid-column: 1 / span 2;
 }
 
@@ -201,7 +220,8 @@ input {
   background: #f6e7df;
   border-radius: 6px;
   color: #9a3c20;
-  height: 36px;
+  grid-column: 1 / span 2;
+  height: 40px;
 }
 
 .primary {

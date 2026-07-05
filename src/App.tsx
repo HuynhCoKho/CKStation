@@ -144,11 +144,12 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
         <div className="cart-list">
           {cart.map((item) => (
             <article className="cart-row" key={item.id}>
-              <div>
+              <div className="cart-item-title">
                 <strong>{item.name}</strong>
                 <span>{formatMoney(item.price)}</span>
               </div>
               <input
+                className="qty-input"
                 aria-label="Số lượng"
                 type="number"
                 min={1}
@@ -157,11 +158,14 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
                   setCart((items) => items.map((cartItem) => (cartItem.id === item.id ? { ...cartItem, quantity: Number(e.target.value) } : cartItem)))
                 }
               />
-              <input
-                value={item.note}
-                onChange={(e) => setCart((items) => items.map((cartItem) => (cartItem.id === item.id ? { ...cartItem, note: e.target.value } : cartItem)))}
-                placeholder="Ít đá, ít ngọt..."
-              />
+              <label className="note-field">
+                Ghi chú cho món này
+                <input
+                  value={item.note}
+                  onChange={(e) => setCart((items) => items.map((cartItem) => (cartItem.id === item.id ? { ...cartItem, note: e.target.value } : cartItem)))}
+                  placeholder="Ví dụ: ít đá, ít ngọt, không cay"
+                />
+              </label>
               <button type="button" onClick={() => setCart((items) => items.filter((cartItem) => cartItem.id !== item.id))} aria-label="Xóa món">
                 <Trash2 size={16} />
               </button>
