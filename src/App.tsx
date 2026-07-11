@@ -1,4 +1,4 @@
-import { ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, RefreshCw, Save, Settings, Trash2 } from "lucide-react";
+import { BookOpen, ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, RefreshCw, Save, Settings, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "./lib/api";
 import { formatDateVN, formatMoney, formatMonthVN, parseDateVN, parseMonthVN, todayKey } from "./lib/money";
@@ -43,6 +43,10 @@ function orderMatchesTable(orderTable: string, table: TableState, index: number)
 
 function compareMenuItemName(a: MenuItem, b: MenuItem) {
   return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
+}
+
+function isBorrowService(item: MenuItem) {
+  return item.name.trim().toLocaleLowerCase("vi-VN") === "mượn sách";
 }
 
 function DateVNInput({ value, onChange, required = false }: { value: string; onChange: (value: string) => void; required?: boolean }) {
@@ -263,13 +267,26 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
           {activeMenu
             .filter((item) => !category || item.category === category)
             .sort(compareMenuItemName)
-            .map((item) => (
-              <button className="menu-item" key={item.id} onClick={() => addToCart(item)}>
-                <span>{item.name}</span>
-                <strong>{formatMoney(item.price)}</strong>
-                <Plus size={18} />
-              </button>
-            ))}
+            .map((item) => {
+              const borrowService = isBorrowService(item);
+              return (
+                <button
+                  className={`menu-item ${borrowService ? "service-link-item" : ""}`}
+                  key={item.id}
+                  onClick={() => {
+                    if (borrowService) {
+                      window.location.href = "https://huynhcokho.github.io/CKlibrary/borrow.html";
+                      return;
+                    }
+                    addToCart(item);
+                  }}
+                >
+                  <span>{borrowService ? "Chọn mượn sách" : item.name}</span>
+                  {borrowService ? <strong>Sang trang mượn sách</strong> : <strong>{formatMoney(item.price)}</strong>}
+                  {borrowService ? <BookOpen size={18} /> : <Plus size={18} />}
+                </button>
+              );
+            })}
         </div>
       </div>
 

@@ -220,6 +220,15 @@ h2 {
   color: #b34f2a;
 }
 
+.menu-item.service-link-item {
+  border-color: #9fcab5;
+  box-shadow: inset 0 4px 0 #2f7d52;
+}
+
+.menu-item.service-link-item strong {
+  color: #2f7d52;
+}
+
 .order-pane,
 .admin-side,
 .tool-panel {
