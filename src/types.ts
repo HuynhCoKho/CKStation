@@ -4,6 +4,8 @@ export type MenuItem = {
   category: string;
   price: number;
   active: boolean;
+  description?: string;
+  link?: string;
 };
 
 export type OrderItem = {

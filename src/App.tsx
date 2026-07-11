@@ -21,9 +21,15 @@ function normalizeData(data: AppData) {
   const tables = data.tables?.length
     ? data.tables
     : tableNames.map((name) => ({ name, occupied: false }));
-  const categories = Array.from(new Set([...(data.categories || []), ...data.menu.map((item) => item.category)].filter(Boolean)));
+  const menu = (data.menu || []).map((item) => ({
+    ...item,
+    description: item.description || "",
+    link: item.link || "",
+  }));
+  const categories = Array.from(new Set([...(data.categories || []), ...menu.map((item) => item.category)].filter(Boolean)));
   return {
     ...data,
+    menu,
     categories,
     tableNames,
     tables,
@@ -47,6 +53,12 @@ function compareMenuItemName(a: MenuItem, b: MenuItem) {
 
 function isBorrowService(item: MenuItem) {
   return item.name.trim().toLocaleLowerCase("vi-VN") === "mượn sách";
+}
+
+function serviceLink(item: MenuItem) {
+  const link = item.link?.trim();
+  if (link) return link;
+  return isBorrowService(item) ? "https://huynhcokho.github.io/CKlibrary/borrow.html" : "";
 }
 
 function DateVNInput({ value, onChange, required = false }: { value: string; onChange: (value: string) => void; required?: boolean }) {
@@ -268,22 +280,22 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
             .filter((item) => !category || item.category === category)
             .sort(compareMenuItemName)
             .map((item) => {
-              const borrowService = isBorrowService(item);
+              const link = serviceLink(item);
               return (
                 <button
-                  className={`menu-item ${borrowService ? "service-link-item" : ""}`}
+                  className={`menu-item ${link ? "service-link-item" : ""}`}
                   key={item.id}
                   onClick={() => {
-                    if (borrowService) {
-                      window.location.href = "https://huynhcokho.github.io/CKlibrary/borrow.html";
+                    if (link) {
+                      window.location.href = link;
                       return;
                     }
                     addToCart(item);
                   }}
                 >
-                  <span>{borrowService ? "Chọn mượn sách" : item.name}</span>
-                  {borrowService ? <strong>Sang trang mượn sách</strong> : <strong>{formatMoney(item.price)}</strong>}
-                  {borrowService ? <BookOpen size={18} /> : <Plus size={18} />}
+                  <span>{item.name}</span>
+                  {link ? <strong>{item.description || "Mở dịch vụ"}</strong> : <strong>{formatMoney(item.price)}</strong>}
+                  {link ? <BookOpen size={18} /> : <Plus size={18} />}
                 </button>
               );
             })}
@@ -758,8 +770,19 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
               type="number"
               value={menuDraft.price || ""}
               onChange={(e) => setMenuDraft({ ...menuDraft, price: Number(e.target.value) })}
-              placeholder="Giá"
-              required
+              placeholder="Giá, bỏ trống nếu là dịch vụ có link"
+              required={!menuDraft.link}
+            />
+            <input
+              value={menuDraft.description || ""}
+              onChange={(e) => setMenuDraft({ ...menuDraft, description: e.target.value })}
+              placeholder="Mô tả dịch vụ, ví dụ: Mở trang đăng ký mượn sách"
+            />
+            <input
+              type="url"
+              value={menuDraft.link || ""}
+              onChange={(e) => setMenuDraft({ ...menuDraft, link: e.target.value })}
+              placeholder="Link dịch vụ, ví dụ: https://huynhcokho.github.io/CKlibrary/borrow.html"
             />
             <label className="check">
               <input
@@ -782,7 +805,11 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                       <div className="menu-admin-row" key={item.id}>
                         <div>
                           <strong>{item.name}</strong>
-                          <span>{formatMoney(item.price)} · {item.active ? "Đang bán" : "Đã ẩn"}</span>
+                          <span>
+                            {serviceLink(item) ? `Dịch vụ · ${item.description || item.link}` : formatMoney(item.price)}
+                            {" · "}
+                            {item.active ? "Đang bán" : "Đã ẩn"}
+                          </span>
                         </div>
                         <button type="button" onClick={() => setMenuDraft(item)}>Sửa</button>
                         <button type="button" onClick={() => hideMenuItem(item.id)}>Ẩn</button>

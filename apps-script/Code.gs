@@ -7,7 +7,7 @@ const SHEETS = {
 };
 
 const HEADERS = {
-  Menu: ["id", "name", "category", "price", "active"],
+  Menu: ["id", "name", "category", "price", "active", "description", "link"],
   Orders: ["id", "tableNumber", "customerName", "status", "createdAt", "paidAt", "total"],
   OrderItems: ["id", "orderId", "menuItemId", "name", "price", "quantity", "note", "status"],
   Expenses: ["id", "date", "name", "amount", "note"],
@@ -84,6 +84,8 @@ function loadData_() {
     category: item.category,
     price: Number(item.price || 0),
     active: String(item.active).toLowerCase() !== "false",
+    description: item.description || "",
+    link: item.link || "",
   }));
 
   const orderRows = readObjects_(SHEETS.orders);
@@ -211,13 +213,15 @@ function createOrder_(order) {
 }
 
 function saveMenuItem_(item) {
-  if (!item || !item.name || !item.category || !item.price) throw new Error("Món cần có tên, nhóm và giá.");
+  if (!item || !item.name || !item.category) throw new Error("Món cần có tên và nhóm.");
   const saved = {
     id: item.id || Utilities.getUuid(),
     name: String(item.name),
     category: String(item.category),
-    price: Number(item.price),
+    price: Number(item.price || 0),
     active: item.active !== false,
+    description: String(item.description || ""),
+    link: String(item.link || ""),
   };
   upsertObject_(SHEETS.menu, "id", saved);
   return saved;
@@ -381,6 +385,15 @@ function ensureSheet_(ss, name, headers) {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);
+  } else {
+    const lastColumn = Math.max(sheet.getLastColumn(), 1);
+    const currentHeaders = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(String);
+    headers.forEach(function (header) {
+      if (currentHeaders.indexOf(header) < 0) {
+        sheet.getRange(1, sheet.getLastColumn() + 1).setValue(header);
+        currentHeaders.push(header);
+      }
+    });
   }
   return sheet;
 }
@@ -403,13 +416,13 @@ function readObjects_(name) {
 
 function appendObject_(name, object) {
   const sheet = getSpreadsheet_().getSheetByName(name);
-  const headers = HEADERS[name];
+  const headers = getSheetHeaders_(sheet, name);
   sheet.appendRow(headers.map((header) => object[header]));
 }
 
 function upsertObject_(name, key, object) {
   const sheet = getSpreadsheet_().getSheetByName(name);
-  const headers = HEADERS[name];
+  const headers = getSheetHeaders_(sheet, name);
   const keyCol = headers.indexOf(key) + 1;
   const values = sheet.getLastRow() > 1 ? sheet.getRange(2, keyCol, sheet.getLastRow() - 1, 1).getValues() : [];
   const rowIndex = values.findIndex((row) => row[0] === object[key]);
@@ -419,6 +432,11 @@ function upsertObject_(name, key, object) {
   } else {
     sheet.appendRow(row);
   }
+}
+
+function getSheetHeaders_(sheet, name) {
+  if (!sheet || sheet.getLastRow() === 0) return HEADERS[name];
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
 }
 
 function getSetting_(key) {
