@@ -152,8 +152,18 @@ export function App() {
           <span>Menu</span>
         </button>
         <div className="brand-center" aria-label="CK Station">
-          <strong>CK STATION</strong>
-          <span>Author: Huỳnh Cỏ Khô</span>
+          <strong className="botanical-title" aria-label="CK Station">
+            {"CK STATION".split("").map((letter, index) =>
+              letter === " " ? (
+                <span className="botanical-space" key={index} aria-hidden="true" />
+              ) : (
+                <span className="botanical-letter" key={`${letter}-${index}`}>
+                  {letter}
+                </span>
+              ),
+            )}
+          </strong>
+          <span className="brand-author">Author: Huỳnh Cỏ Khô</span>
         </div>
         {!isPublicMenu && (
           <nav className="tabs">
