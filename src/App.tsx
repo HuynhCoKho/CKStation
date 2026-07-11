@@ -133,11 +133,12 @@ export function App() {
       <header className="topbar">
         <button className="brand" onClick={() => setView("customer")} aria-label="CK Station">
           <Coffee size={26} />
-          <span>
-            CK Station
-            <small>Author: Huỳnh Cỏ Khô</small>
-          </span>
+          <span>Menu</span>
         </button>
+        <div className="brand-center" aria-label="CK Station">
+          <strong>CK STATION</strong>
+          <span>Author: Huỳnh Cỏ Khô</span>
+        </div>
         {!isPublicMenu && (
           <nav className="tabs">
             <button className={view === "customer" ? "active" : ""} onClick={() => setView("customer")}>
