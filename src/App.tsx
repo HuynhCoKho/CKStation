@@ -458,9 +458,22 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
 
   async function saveMenu(event: FormEvent) {
     event.preventDefault();
-    await api.saveMenuItem(menuDraft);
-    setMenuDraft({ active: true });
-    onChanged();
+    try {
+      await api.saveMenuItem({ ...menuDraft, price: Number(menuDraft.price || 0) });
+      setMenuDraft({ active: true });
+      setAdminError("");
+      setAdminMessage("Đã lưu món/dịch vụ.");
+      onChanged();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không lưu được món/dịch vụ.";
+      const needsScriptUpdate = Boolean(menuDraft.link) && message.includes("Món cần có tên, nhóm và giá");
+      setAdminMessage("");
+      setAdminError(
+        needsScriptUpdate
+          ? "Apps Script hiện tại chưa được cập nhật để lưu dịch vụ có link. Hãy cập nhật Code.gs mới, deploy lại Web App rồi lưu lại dịch vụ."
+          : message,
+      );
+    }
   }
 
   async function saveExpense(event: FormEvent) {
@@ -793,6 +806,8 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
               Đang bán
             </label>
             <button className="primary"><Save size={18} /> Lưu món</button>
+            {adminError && <p className="alert inline-alert">{adminError}</p>}
+            {adminMessage && <p className="success">{adminMessage}</p>}
             <div className="menu-admin-list">
               {groupedMenu.map((group) => (
                 <section className="menu-admin-group" key={group.category}>
