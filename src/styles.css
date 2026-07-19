@@ -665,6 +665,10 @@ textarea {
   margin-top: 4px;
 }
 
+.link-admin-row {
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+}
+
 .menu-admin-row button {
   background: #ece7dd;
   border-radius: 6px;

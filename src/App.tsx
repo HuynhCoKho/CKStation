@@ -6,6 +6,20 @@ import type { AppData, Expense, LinkItem, MenuItem, Order, OrderItem, TableState
 
 type View = "customer" | "admin";
 const cacheKey = "ckstation_cached_data";
+const localLinksKey = "ckstation_private_links";
+
+function readLocalLinks() {
+  try {
+    const raw = localStorage.getItem(localLinksKey);
+    return raw ? (JSON.parse(raw) as LinkItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function isLocalLink(link: Pick<LinkItem, "id">) {
+  return String(link.id || "").startsWith("local-");
+}
 
 function readCachedData() {
   try {
@@ -191,12 +205,7 @@ export function App() {
 
 function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
   const activeMenu = data.menu.filter((item) => item.active).sort(compareMenuItemName);
-  const activeLinks = (data.links || []).filter((link) => link.active && link.url);
-  const linkTab = "Liên kết";
-  const categories = [
-    ...Array.from(new Set([...(data.categories || []), ...activeMenu.map((item) => item.category)].filter((name) => activeMenu.some((item) => item.category === name)))),
-    ...(activeLinks.length ? [linkTab] : []),
-  ];
+  const categories = Array.from(new Set([...(data.categories || []), ...activeMenu.map((item) => item.category)].filter((name) => activeMenu.some((item) => item.category === name))));
   const openOrders = data.orders.filter((order) => order.status === "open");
   const tableOptions = data.tables?.length
     ? data.tables
@@ -292,16 +301,7 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
           ))}
         </div>
         <div className="menu-grid">
-          {category === linkTab ? (
-            activeLinks.map((link) => (
-              <button className="menu-item service-link-item" key={link.id} onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}>
-                <span>{link.name}</span>
-                <strong>{link.description || "Mở liên kết"}</strong>
-                <BookOpen size={18} />
-              </button>
-            ))
-          ) : (
-            activeMenu
+          {activeMenu
             .filter((item) => !category || item.category === category)
             .sort(compareMenuItemName)
             .map((item) => {
@@ -323,8 +323,7 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
                   {link ? <BookOpen size={18} /> : <Plus size={18} />}
                 </button>
               );
-            })
-          )}
+            })}
         </div>
       </div>
 
@@ -419,6 +418,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [token, setToken] = useState(localStorage.getItem("ck_admin_token") || "");
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
   const [linkDraft, setLinkDraft] = useState<Partial<LinkItem>>({ active: true });
+  const [localLinks, setLocalLinks] = useState<LinkItem[]>(() => readLocalLinks());
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
   const [tableDraft, setTableDraft] = useState("");
   const [editingTableName, setEditingTableName] = useState("");
@@ -478,6 +478,30 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
     expense: expensesInRange.reduce((sum, item) => sum + item.amount, 0),
   };
   const incomeProfit = incomeSummary.revenue - incomeSummary.expense;
+  const adminLinks = [...(data.links || []), ...localLinks.filter((localLink) => !(data.links || []).some((link) => link.id === localLink.id))];
+
+  function persistLocalLinks(nextLinks: LinkItem[]) {
+    setLocalLinks(nextLinks);
+    localStorage.setItem(localLinksKey, JSON.stringify(nextLinks));
+  }
+
+  function saveLocalLink() {
+    const saved: LinkItem = {
+      id: linkDraft.id || `local-${crypto.randomUUID()}`,
+      name: String(linkDraft.name || "").trim(),
+      url: String(linkDraft.url || "").trim(),
+      description: String(linkDraft.description || "").trim(),
+      note: String(linkDraft.note || "").trim(),
+      active: linkDraft.active !== false,
+    };
+    const nextLinks = localLinks.some((link) => link.id === saved.id)
+      ? localLinks.map((link) => (link.id === saved.id ? saved : link))
+      : [...localLinks, saved];
+    persistLocalLinks(nextLinks);
+    setLinkDraft({ active: true });
+    setAdminError("");
+    setAdminMessage("Đã lưu liên kết riêng trên trình duyệt của bạn.");
+  }
 
   function saveToken() {
     localStorage.setItem("ck_admin_token", token);
@@ -505,6 +529,10 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
 
   async function saveLink(event: FormEvent) {
     event.preventDefault();
+    if (linkDraft.id && isLocalLink({ id: linkDraft.id })) {
+      saveLocalLink();
+      return;
+    }
     try {
       await api.saveLink(linkDraft);
       setLinkDraft({ active: true });
@@ -512,13 +540,24 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       setAdminMessage("Đã lưu liên kết.");
       onChanged();
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Không lưu được liên kết.";
+      if (message.includes("Action không hợp lệ")) {
+        saveLocalLink();
+        return;
+      }
       setAdminMessage("");
-      setAdminError(err instanceof Error ? err.message : "Không lưu được liên kết. Hãy cập nhật Apps Script mới nếu chưa deploy lại Web App.");
+      setAdminError(`${message} Hãy cập nhật Apps Script mới nếu muốn lưu liên kết vào Google Sheet.`);
     }
   }
 
   async function removeLink(link: LinkItem) {
     if (!window.confirm(`Xóa liên kết "${link.name}"?`)) return;
+    if (isLocalLink(link)) {
+      persistLocalLinks(localLinks.filter((item) => item.id !== link.id));
+      setAdminError("");
+      setAdminMessage("Đã xóa liên kết riêng.");
+      return;
+    }
     try {
       await api.removeLink(link.id);
       setAdminError("");
@@ -531,6 +570,12 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   }
 
   async function toggleLink(link: LinkItem) {
+    if (isLocalLink(link)) {
+      persistLocalLinks(localLinks.map((item) => (item.id === link.id ? { ...item, active: !item.active } : item)));
+      setAdminError("");
+      setAdminMessage(link.active ? "Đã ẩn liên kết riêng." : "Đã hiển thị liên kết riêng.");
+      return;
+    }
     try {
       await api.saveLink({ ...link, active: !link.active });
       setAdminError("");
@@ -979,7 +1024,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
           <section className="link-admin-panel">
             <div className="section-title">
               <h1>Liên kết</h1>
-              <p>{(data.links || []).length} liên kết</p>
+              <p>{adminLinks.length} liên kết</p>
             </div>
             <form className="tool-panel" onSubmit={saveLink}>
               <input value={linkDraft.name || ""} onChange={(event) => setLinkDraft({ ...linkDraft, name: event.target.value })} placeholder="Tên liên kết" required />
@@ -998,19 +1043,23 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
               )}
             </form>
             <div className="menu-admin-list">
-              {(data.links || []).map((link) => (
+              {adminLinks.map((link) => (
                 <div className="menu-admin-row link-admin-row" key={link.id}>
                   <div>
                     <strong>{link.name}</strong>
-                    <span>{link.description || link.url} · {link.active ? "Đang hiển thị" : "Đã ẩn"}</span>
+                    <span>
+                      {link.description || link.url} · {link.active ? "Đang hiển thị" : "Đã ẩn"}
+                      {isLocalLink(link) ? " · Riêng trên máy này" : ""}
+                    </span>
                     {link.note && <small>Ghi chú: {link.note}</small>}
                   </div>
+                  <button type="button" onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}>Mở</button>
                   <button type="button" onClick={() => setLinkDraft(link)}>Sửa</button>
                   <button type="button" onClick={() => toggleLink(link)}>{link.active ? "Ẩn" : "Hiện"}</button>
                   <button type="button" onClick={() => removeLink(link)}>Xóa</button>
                 </div>
               ))}
-              {!(data.links || []).length && <p className="muted">Chưa có liên kết nào.</p>}
+              {!adminLinks.length && <p className="muted">Chưa có liên kết nào.</p>}
             </div>
           </section>
         )}
