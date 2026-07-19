@@ -52,6 +52,10 @@ function compareMenuItemName(a: MenuItem, b: MenuItem) {
   return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
 }
 
+function compareLinkName(a: LinkItem, b: LinkItem) {
+  return a.name.localeCompare(b.name, "vi", { sensitivity: "base", numeric: true });
+}
+
 function isBorrowService(item: MenuItem) {
   return item.name.trim().toLocaleLowerCase("vi-VN") === "mượn sách";
 }
@@ -463,7 +467,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
     expense: expensesInRange.reduce((sum, item) => sum + item.amount, 0),
   };
   const incomeProfit = incomeSummary.revenue - incomeSummary.expense;
-  const adminLinks = data.links || [];
+  const adminLinks = [...(data.links || [])].sort(compareLinkName);
 
   function saveToken() {
     localStorage.setItem("ck_admin_token", token);
