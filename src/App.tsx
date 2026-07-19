@@ -6,20 +6,6 @@ import type { AppData, Expense, LinkItem, MenuItem, Order, OrderItem, TableState
 
 type View = "customer" | "admin";
 const cacheKey = "ckstation_cached_data";
-const localLinksKey = "ckstation_private_links";
-
-function readLocalLinks() {
-  try {
-    const raw = localStorage.getItem(localLinksKey);
-    return raw ? (JSON.parse(raw) as LinkItem[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function isLocalLink(link: Pick<LinkItem, "id">) {
-  return String(link.id || "").startsWith("local-");
-}
 
 function readCachedData() {
   try {
@@ -418,7 +404,6 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [token, setToken] = useState(localStorage.getItem("ck_admin_token") || "");
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
   const [linkDraft, setLinkDraft] = useState<Partial<LinkItem>>({ active: true });
-  const [localLinks, setLocalLinks] = useState<LinkItem[]>(() => readLocalLinks());
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
   const [tableDraft, setTableDraft] = useState("");
   const [editingTableName, setEditingTableName] = useState("");
@@ -478,30 +463,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
     expense: expensesInRange.reduce((sum, item) => sum + item.amount, 0),
   };
   const incomeProfit = incomeSummary.revenue - incomeSummary.expense;
-  const adminLinks = [...(data.links || []), ...localLinks.filter((localLink) => !(data.links || []).some((link) => link.id === localLink.id))];
-
-  function persistLocalLinks(nextLinks: LinkItem[]) {
-    setLocalLinks(nextLinks);
-    localStorage.setItem(localLinksKey, JSON.stringify(nextLinks));
-  }
-
-  function saveLocalLink() {
-    const saved: LinkItem = {
-      id: linkDraft.id || `local-${crypto.randomUUID()}`,
-      name: String(linkDraft.name || "").trim(),
-      url: String(linkDraft.url || "").trim(),
-      description: String(linkDraft.description || "").trim(),
-      note: String(linkDraft.note || "").trim(),
-      active: linkDraft.active !== false,
-    };
-    const nextLinks = localLinks.some((link) => link.id === saved.id)
-      ? localLinks.map((link) => (link.id === saved.id ? saved : link))
-      : [...localLinks, saved];
-    persistLocalLinks(nextLinks);
-    setLinkDraft({ active: true });
-    setAdminError("");
-    setAdminMessage("Đã lưu liên kết riêng trên trình duyệt của bạn.");
-  }
+  const adminLinks = data.links || [];
 
   function saveToken() {
     localStorage.setItem("ck_admin_token", token);
@@ -529,10 +491,6 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
 
   async function saveLink(event: FormEvent) {
     event.preventDefault();
-    if (linkDraft.id && isLocalLink({ id: linkDraft.id })) {
-      saveLocalLink();
-      return;
-    }
     try {
       await api.saveLink(linkDraft);
       setLinkDraft({ active: true });
@@ -541,23 +499,17 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       onChanged();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Không lưu được liên kết.";
-      if (message.includes("Action không hợp lệ")) {
-        saveLocalLink();
-        return;
-      }
       setAdminMessage("");
-      setAdminError(`${message} Hãy cập nhật Apps Script mới nếu muốn lưu liên kết vào Google Sheet.`);
+      setAdminError(
+        message.includes("Action không hợp lệ")
+          ? "Apps Script hiện tại chưa được cập nhật chức năng Liên kết. Hãy cập nhật Code.gs mới, deploy lại Web App rồi lưu lại để các máy quản trị đều thấy."
+          : message,
+      );
     }
   }
 
   async function removeLink(link: LinkItem) {
     if (!window.confirm(`Xóa liên kết "${link.name}"?`)) return;
-    if (isLocalLink(link)) {
-      persistLocalLinks(localLinks.filter((item) => item.id !== link.id));
-      setAdminError("");
-      setAdminMessage("Đã xóa liên kết riêng.");
-      return;
-    }
     try {
       await api.removeLink(link.id);
       setAdminError("");
@@ -570,12 +522,6 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   }
 
   async function toggleLink(link: LinkItem) {
-    if (isLocalLink(link)) {
-      persistLocalLinks(localLinks.map((item) => (item.id === link.id ? { ...item, active: !item.active } : item)));
-      setAdminError("");
-      setAdminMessage(link.active ? "Đã ẩn liên kết riêng." : "Đã hiển thị liên kết riêng.");
-      return;
-    }
     try {
       await api.saveLink({ ...link, active: !link.active });
       setAdminError("");
@@ -1026,6 +972,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
               <h1>Liên kết</h1>
               <p>{adminLinks.length} liên kết</p>
             </div>
+            <p className="muted">Các liên kết được lưu vào Google Sheet, chỉ hiện trong trang quản lý sau khi nhập mã quản trị.</p>
             <form className="tool-panel" onSubmit={saveLink}>
               <input value={linkDraft.name || ""} onChange={(event) => setLinkDraft({ ...linkDraft, name: event.target.value })} placeholder="Tên liên kết" required />
               <input type="url" value={linkDraft.url || ""} onChange={(event) => setLinkDraft({ ...linkDraft, url: event.target.value })} placeholder="Link" required />
@@ -1049,7 +996,6 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                     <strong>{link.name}</strong>
                     <span>
                       {link.description || link.url} · {link.active ? "Đang hiển thị" : "Đã ẩn"}
-                      {isLocalLink(link) ? " · Riêng trên máy này" : ""}
                     </span>
                     {link.note && <small>Ghi chú: {link.note}</small>}
                   </div>
