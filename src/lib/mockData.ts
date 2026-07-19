@@ -20,6 +20,9 @@ export const mockData: AppData = {
     { id: "matcha", name: "Matcha đá xay", category: "Đá xay", price: 42000, active: true },
     { id: "banh-mi", name: "Bánh mì trứng", category: "Đồ ăn", price: 25000, active: true },
   ],
+  links: [
+    { id: "demo-link-1", name: "CK Library", url: "https://huynhcokho.github.io/CKlibrary/borrow.html", description: "Trang mượn sách", note: "Demo", active: true },
+  ],
   orders: [
     {
       id: "demo-1",

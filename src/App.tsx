@@ -2,7 +2,7 @@ import { BookOpen, ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, Refres
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api } from "./lib/api";
 import { formatDateVN, formatMoney, formatMonthVN, parseDateVN, parseMonthVN, todayKey } from "./lib/money";
-import type { AppData, Expense, MenuItem, Order, OrderItem, TableState } from "./types";
+import type { AppData, Expense, LinkItem, MenuItem, Order, OrderItem, TableState } from "./types";
 
 type View = "customer" | "admin";
 const cacheKey = "ckstation_cached_data";
@@ -30,6 +30,7 @@ function normalizeData(data: AppData) {
   return {
     ...data,
     menu,
+    links: data.links || [],
     categories,
     tableNames,
     tables,
@@ -190,7 +191,12 @@ export function App() {
 
 function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
   const activeMenu = data.menu.filter((item) => item.active).sort(compareMenuItemName);
-  const categories = Array.from(new Set([...(data.categories || []), ...activeMenu.map((item) => item.category)].filter((name) => activeMenu.some((item) => item.category === name))));
+  const activeLinks = (data.links || []).filter((link) => link.active && link.url);
+  const linkTab = "Liên kết";
+  const categories = [
+    ...Array.from(new Set([...(data.categories || []), ...activeMenu.map((item) => item.category)].filter((name) => activeMenu.some((item) => item.category === name)))),
+    ...(activeLinks.length ? [linkTab] : []),
+  ];
   const openOrders = data.orders.filter((order) => order.status === "open");
   const tableOptions = data.tables?.length
     ? data.tables
@@ -286,7 +292,16 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
           ))}
         </div>
         <div className="menu-grid">
-          {activeMenu
+          {category === linkTab ? (
+            activeLinks.map((link) => (
+              <button className="menu-item service-link-item" key={link.id} onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}>
+                <span>{link.name}</span>
+                <strong>{link.description || "Mở liên kết"}</strong>
+                <BookOpen size={18} />
+              </button>
+            ))
+          ) : (
+            activeMenu
             .filter((item) => !category || item.category === category)
             .sort(compareMenuItemName)
             .map((item) => {
@@ -308,7 +323,8 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
                   {link ? <BookOpen size={18} /> : <Plus size={18} />}
                 </button>
               );
-            })}
+            })
+          )}
         </div>
       </div>
 
@@ -402,6 +418,7 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
 function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
   const [token, setToken] = useState(localStorage.getItem("ck_admin_token") || "");
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
+  const [linkDraft, setLinkDraft] = useState<Partial<LinkItem>>({ active: true });
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
   const [tableDraft, setTableDraft] = useState("");
   const [editingTableName, setEditingTableName] = useState("");
@@ -409,7 +426,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const [editingCategory, setEditingCategory] = useState("");
   const [adminMessage, setAdminMessage] = useState("");
   const [adminError, setAdminError] = useState("");
-  const [adminSection, setAdminSection] = useState<"operations" | "income">("operations");
+  const [adminSection, setAdminSection] = useState<"operations" | "income" | "links">("operations");
   const [incomeMode, setIncomeMode] = useState<"day" | "month" | "year">("day");
   const [incomeDay, setIncomeDay] = useState(todayKey());
   const [incomeMonth, setIncomeMonth] = useState(todayKey().slice(0, 7));
@@ -483,6 +500,45 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
           ? "Apps Script hiện tại chưa được cập nhật để lưu dịch vụ có link. Hãy cập nhật Code.gs mới, deploy lại Web App rồi lưu lại dịch vụ."
           : message,
       );
+    }
+  }
+
+  async function saveLink(event: FormEvent) {
+    event.preventDefault();
+    try {
+      await api.saveLink(linkDraft);
+      setLinkDraft({ active: true });
+      setAdminError("");
+      setAdminMessage("Đã lưu liên kết.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không lưu được liên kết. Hãy cập nhật Apps Script mới nếu chưa deploy lại Web App.");
+    }
+  }
+
+  async function removeLink(link: LinkItem) {
+    if (!window.confirm(`Xóa liên kết "${link.name}"?`)) return;
+    try {
+      await api.removeLink(link.id);
+      setAdminError("");
+      setAdminMessage("Đã xóa liên kết.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không xóa được liên kết.");
+    }
+  }
+
+  async function toggleLink(link: LinkItem) {
+    try {
+      await api.saveLink({ ...link, active: !link.active });
+      setAdminError("");
+      setAdminMessage(link.active ? "Đã ẩn liên kết." : "Đã hiển thị liên kết.");
+      onChanged();
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không cập nhật được liên kết.");
     }
   }
 
@@ -719,6 +775,9 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
           <button className={adminSection === "income" ? "active" : ""} onClick={() => setAdminSection("income")}>
             Thu nhập
           </button>
+          <button className={adminSection === "links" ? "active" : ""} onClick={() => setAdminSection("links")}>
+            Liên kết
+          </button>
         </div>
         {adminMessage && <p className="success admin-feedback">{adminMessage}</p>}
         {adminError && <p className="alert inline-alert admin-feedback">{adminError}</p>}
@@ -848,7 +907,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
               </form>
             </div>
           </>
-        ) : (
+        ) : adminSection === "income" ? (
           <section className="income-panel">
             <div className="section-title">
               <h1>Thu nhập</h1>
@@ -914,6 +973,44 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
                   <p className="muted">Chưa có chi phí trong khoảng này.</p>
                 )}
               </div>
+            </div>
+          </section>
+        ) : (
+          <section className="link-admin-panel">
+            <div className="section-title">
+              <h1>Liên kết</h1>
+              <p>{(data.links || []).length} liên kết</p>
+            </div>
+            <form className="tool-panel" onSubmit={saveLink}>
+              <input value={linkDraft.name || ""} onChange={(event) => setLinkDraft({ ...linkDraft, name: event.target.value })} placeholder="Tên liên kết" required />
+              <input type="url" value={linkDraft.url || ""} onChange={(event) => setLinkDraft({ ...linkDraft, url: event.target.value })} placeholder="Link" required />
+              <input value={linkDraft.description || ""} onChange={(event) => setLinkDraft({ ...linkDraft, description: event.target.value })} placeholder="Mô tả hiển thị cho người dùng" />
+              <input value={linkDraft.note || ""} onChange={(event) => setLinkDraft({ ...linkDraft, note: event.target.value })} placeholder="Ghi chú nội bộ, chỉ mình thấy" />
+              <label className="check">
+                <input type="checkbox" checked={linkDraft.active !== false} onChange={(event) => setLinkDraft({ ...linkDraft, active: event.target.checked })} />
+                Đang hiển thị
+              </label>
+              <button className="primary"><Save size={18} /> Lưu liên kết</button>
+              {(linkDraft.id || linkDraft.name || linkDraft.url || linkDraft.description || linkDraft.note) && (
+                <button className="soft-button" type="button" onClick={() => setLinkDraft({ active: true })}>
+                  Làm mới form
+                </button>
+              )}
+            </form>
+            <div className="menu-admin-list">
+              {(data.links || []).map((link) => (
+                <div className="menu-admin-row link-admin-row" key={link.id}>
+                  <div>
+                    <strong>{link.name}</strong>
+                    <span>{link.description || link.url} · {link.active ? "Đang hiển thị" : "Đã ẩn"}</span>
+                    {link.note && <small>Ghi chú: {link.note}</small>}
+                  </div>
+                  <button type="button" onClick={() => setLinkDraft(link)}>Sửa</button>
+                  <button type="button" onClick={() => toggleLink(link)}>{link.active ? "Ẩn" : "Hiện"}</button>
+                  <button type="button" onClick={() => removeLink(link)}>Xóa</button>
+                </div>
+              ))}
+              {!(data.links || []).length && <p className="muted">Chưa có liên kết nào.</p>}
             </div>
           </section>
         )}

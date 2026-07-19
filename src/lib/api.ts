@@ -1,4 +1,4 @@
-import type { AppData, Expense, MenuItem, Order, TableState } from "../types";
+import type { AppData, Expense, LinkItem, MenuItem, Order, TableState } from "../types";
 import { mockData } from "./mockData";
 
 const apiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/^\uFEFF/, "").trim();
@@ -31,6 +31,8 @@ export const api = {
   saveMenuItem: (item: Partial<MenuItem>) => request<MenuItem>("saveMenuItem", { item }, true),
   deleteMenuItem: (id: string) => request<MenuItem>("deleteMenuItem", { id }, true),
   removeMenuItem: (id: string) => request<MenuItem>("removeMenuItem", { id }, true),
+  saveLink: (link: Partial<LinkItem>) => request<LinkItem>("saveLink", { link }, true),
+  removeLink: (id: string) => request<LinkItem>("removeLink", { id }, true),
   updateOrder: (order: Order) => request<Order>("updateOrder", { order }, true),
   addExpense: (expense: Omit<Expense, "id">) => request<Expense>("addExpense", { expense }, true),
   setTableCount: (tableCount: number) => request<number>("setTableCount", { tableCount }, true),
@@ -46,6 +48,8 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   if (action === "saveMenuItem") return { id: crypto.randomUUID(), active: true, ...(payload.item as object) };
   if (action === "deleteMenuItem") return data.menu[0];
   if (action === "removeMenuItem") return data.menu[0];
+  if (action === "saveLink") return { id: crypto.randomUUID(), active: true, ...(payload.link as object) };
+  if (action === "removeLink") return data.links[0];
   if (action === "updateOrder") return payload.order;
   if (action === "addExpense") return { id: crypto.randomUUID(), ...(payload.expense as object) };
   if (action === "setTableCount") return payload.tableCount;

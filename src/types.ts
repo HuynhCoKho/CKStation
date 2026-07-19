@@ -37,6 +37,15 @@ export type Expense = {
   note: string;
 };
 
+export type LinkItem = {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  note: string;
+  active: boolean;
+};
+
 export type DailyStats = {
   date: string;
   revenue: number;
@@ -59,4 +68,5 @@ export type AppData = {
   tableCount: number;
   tableNames: string[];
   tables: TableState[];
+  links: LinkItem[];
 };

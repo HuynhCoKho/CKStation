@@ -3,6 +3,7 @@ const SHEETS = {
   orders: "Orders",
   orderItems: "OrderItems",
   expenses: "Expenses",
+  links: "Links",
   settings: "Settings",
 };
 
@@ -11,6 +12,7 @@ const HEADERS = {
   Orders: ["id", "tableNumber", "customerName", "status", "createdAt", "paidAt", "total"],
   OrderItems: ["id", "orderId", "menuItemId", "name", "price", "quantity", "note", "status"],
   Expenses: ["id", "date", "name", "amount", "note"],
+  Links: ["id", "name", "url", "description", "note", "active"],
   Settings: ["key", "value"],
 };
 
@@ -30,7 +32,7 @@ function doGet(e) {
     }
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(e.parameter.token);
@@ -49,7 +51,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(body.token);
@@ -68,6 +70,8 @@ function route_(action, payload) {
   if (action === "saveMenuItem") return saveMenuItem_(payload.item);
   if (action === "deleteMenuItem") return deleteMenuItem_(payload.id);
   if (action === "removeMenuItem") return removeMenuItem_(payload.id);
+  if (action === "saveLink") return saveLink_(payload.link);
+  if (action === "removeLink") return removeLink_(payload.id);
   if (action === "updateOrder") return updateOrder_(payload.order);
   if (action === "addExpense") return addExpense_(payload.expense);
   if (action === "setTableCount") return setTableCount_(payload.tableCount);
@@ -122,11 +126,21 @@ function loadData_() {
     note: expense.note || "",
   }));
 
+  const links = readObjects_(SHEETS.links).map((link) => ({
+    id: link.id,
+    name: link.name || "",
+    url: link.url || "",
+    description: link.description || "",
+    note: link.note || "",
+    active: String(link.active).toLowerCase() !== "false",
+  }));
+
   return {
     menu,
     categories: getCategories_(menu),
     orders,
     expenses,
+    links,
     stats: getDailyStats_(orders, expenses),
     tableCount: Number(getSetting_("tableCount") || 12),
     tableNames: getTableNames_(),
@@ -241,6 +255,30 @@ function removeMenuItem_(id) {
   const rows = readObjects_(SHEETS.menu);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) throw new Error("Không tìm thấy món.");
+  const item = rows[index];
+  sheet.deleteRow(index + 2);
+  return item;
+}
+
+function saveLink_(link) {
+  if (!link || !link.name || !link.url) throw new Error("Liên kết cần có tên và link.");
+  const saved = {
+    id: link.id || Utilities.getUuid(),
+    name: String(link.name),
+    url: String(link.url),
+    description: String(link.description || ""),
+    note: String(link.note || ""),
+    active: link.active !== false,
+  };
+  upsertObject_(SHEETS.links, "id", saved);
+  return saved;
+}
+
+function removeLink_(id) {
+  const sheet = getSpreadsheet_().getSheetByName(SHEETS.links);
+  const rows = readObjects_(SHEETS.links);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) throw new Error("Không tìm thấy liên kết.");
   const item = rows[index];
   sheet.deleteRow(index + 2);
   return item;

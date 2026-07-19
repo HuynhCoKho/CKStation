@@ -658,6 +658,13 @@ textarea {
   margin-top: 3px;
 }
 
+.link-admin-row small {
+  color: #667169;
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 .menu-admin-row button {
   background: #ece7dd;
   border-radius: 6px;
