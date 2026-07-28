@@ -150,7 +150,7 @@ export function App() {
   const [data, setData] = useState<AppData | null>(() => readCachedData());
   const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
-  const showAdminControls = adminModeRequested || Boolean(savedAdminToken());
+  const showAdminControls = !isPublicMenu || adminModeRequested || Boolean(savedAdminToken());
 
   async function refresh(showIndicator = !data, admin = false) {
     if (showIndicator) setLoading(true);
