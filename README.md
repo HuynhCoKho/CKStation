@@ -27,7 +27,7 @@ Tạo file `.env.local` từ `.env.example`, rồi điền URL Web App của Goo
 3. Dán nội dung `apps-script/Code.gs`.
 4. Chạy hàm `setup()` một lần để tạo các tab dữ liệu.
 5. Trong Apps Script, vào `Project Settings > Script properties` và đặt:
-   - `SPREADSHEET_ID`: `15C95YKp6JdyQHsKBUp9qN9ZAA6SmFQvRCt7G8dUj4RE`
+   - `SPREADSHEET_ID`: ID Google Sheet của bạn
    - `ADMIN_TOKEN`: mật khẩu quản trị mạnh do bạn tự chọn
 6. Deploy dạng Web App:
    - Execute as: `Me`

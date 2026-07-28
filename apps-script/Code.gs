@@ -470,7 +470,8 @@ function isAdminToken_(token) {
 }
 
 function getSpreadsheet_() {
-  const id = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID") || "15C95YKp6JdyQHsKBUp9qN9ZAA6SmFQvRCt7G8dUj4RE";
+  const id = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
+  if (!id) throw new Error("Chưa cấu hình SPREADSHEET_ID trong Apps Script.");
   return SpreadsheetApp.openById(id);
 }
 
