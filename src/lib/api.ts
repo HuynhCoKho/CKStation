@@ -9,7 +9,7 @@ function adminToken() {
   return localStorage.getItem("ck_admin_token") || "";
 }
 
-async function request<T>(action: string, payload: Record<string, unknown> = {}, admin = false): Promise<T> {
+async function request<T>(action: string, payload: Record<string, unknown> = {}, admin = false, tokenOverride = ""): Promise<T> {
   if (!apiUrl || apiUrl.includes("YOUR_DEPLOYMENT_ID")) {
     await new Promise((resolve) => setTimeout(resolve, 250));
     return mockRequest(action, payload) as T;
@@ -17,7 +17,7 @@ async function request<T>(action: string, payload: Record<string, unknown> = {},
 
   const result = await jsonp<ApiResponse<T>>(apiUrl, {
     action,
-    token: admin ? adminToken() : "",
+    token: admin ? tokenOverride || adminToken() : "",
     payload: JSON.stringify(payload),
   });
   if (!result.ok) throw new Error(result.error || "Không xử lý được yêu cầu.");
@@ -25,7 +25,8 @@ async function request<T>(action: string, payload: Record<string, unknown> = {},
 }
 
 export const api = {
-  loadData: () => request<AppData>("loadData"),
+  loadData: (admin = false) => request<AppData>("loadData", {}, admin),
+  verifyAdmin: (token: string) => request<boolean>("verifyAdmin", {}, true, token),
   createOrder: (order: Pick<Order, "tableNumber" | "customerName" | "items">) =>
     request<Order>("createOrder", { order }),
   saveMenuItem: (item: Partial<MenuItem>) => request<MenuItem>("saveMenuItem", { item }, true),
@@ -44,6 +45,7 @@ export const api = {
 function mockRequest(action: string, payload: Record<string, unknown>) {
   const data = JSON.parse(JSON.stringify(mockData)) as AppData;
   if (action === "loadData") return data;
+  if (action === "verifyAdmin") return Boolean(adminToken());
   if (action === "createOrder") return { id: crypto.randomUUID(), ...(payload.order as object) };
   if (action === "saveMenuItem") return { id: crypto.randomUUID(), active: true, ...(payload.item as object) };
   if (action === "deleteMenuItem") return data.menu[0];

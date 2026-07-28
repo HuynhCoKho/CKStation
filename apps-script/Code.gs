@@ -32,13 +32,13 @@ function doGet(e) {
     }
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["verifyAdmin", "saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(e.parameter.token);
     }
 
-    const data = route_(action, payload);
+    const data = route_(action, payload, isAdminToken_(e.parameter.token));
     return output_(e, { ok: true, data });
   } catch (error) {
     return output_(e, { ok: false, error: error.message || String(error) });
@@ -51,21 +51,22 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
-    const adminActions = ["saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["verifyAdmin", "saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(body.token);
     }
 
-    const data = route_(action, payload);
+    const data = route_(action, payload, isAdminToken_(body.token));
     return json_({ ok: true, data });
   } catch (error) {
     return json_({ ok: false, error: error.message || String(error) });
   }
 }
 
-function route_(action, payload) {
-  if (action === "loadData") return loadData_();
+function route_(action, payload, isAdmin) {
+  if (action === "verifyAdmin") return true;
+  if (action === "loadData") return loadData_(isAdmin);
   if (action === "createOrder") return createOrder_(payload.order);
   if (action === "saveMenuItem") return saveMenuItem_(payload.item);
   if (action === "deleteMenuItem") return deleteMenuItem_(payload.id);
@@ -81,7 +82,7 @@ function route_(action, payload) {
   throw new Error("Action không hợp lệ.");
 }
 
-function loadData_() {
+function loadData_(isAdmin) {
   const menu = readObjects_(SHEETS.menu).map((item) => ({
     id: item.id,
     name: item.name,
@@ -134,6 +135,30 @@ function loadData_() {
     note: link.note || "",
     active: String(link.active).toLowerCase() !== "false",
   }));
+
+  const tableStatuses = getTables_().map(function (table, index) {
+    const hasOpenOrder = orders.some(function (order) {
+      return order.status === "open" && orderMatchesTable_(order.tableNumber, table, index);
+    });
+    return {
+      name: table.name,
+      occupied: Boolean(table.occupied) || hasOpenOrder,
+    };
+  });
+
+  if (!isAdmin) {
+    return {
+      menu,
+      categories: getCategories_(menu),
+      orders: [],
+      expenses: [],
+      links: [],
+      stats: getDailyStats_([], []),
+      tableCount: Number(getSetting_("tableCount") || 12),
+      tableNames: getTableNames_(),
+      tables: tableStatuses,
+    };
+  }
 
   return {
     menu,
@@ -213,17 +238,28 @@ function createOrder_(order) {
   });
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  appendObject_(SHEETS.orders, {
+  const savedOrder = {
     id: orderId,
     tableNumber: String(order.tableNumber),
     customerName: order.customerName || "Khách",
     status: "open",
     createdAt,
     paidAt: "",
+    items,
     total,
+  };
+
+  appendObject_(SHEETS.orders, {
+    id: savedOrder.id,
+    tableNumber: savedOrder.tableNumber,
+    customerName: savedOrder.customerName,
+    status: savedOrder.status,
+    createdAt: savedOrder.createdAt,
+    paidAt: savedOrder.paidAt,
+    total: savedOrder.total,
   });
   items.forEach((item) => appendObject_(SHEETS.orderItems, item));
-  return loadData_().orders.find((saved) => saved.id === orderId);
+  return savedOrder;
 }
 
 function saveMenuItem_(item) {
@@ -398,6 +434,17 @@ function getTables_() {
   });
 }
 
+function tableLabel_(table, index) {
+  const fallback = "Bàn " + (index + 1);
+  return table.name === fallback ? fallback : fallback + " - " + table.name;
+}
+
+function orderMatchesTable_(orderTable, table, index) {
+  const number = String(index + 1);
+  const fallback = "Bàn " + number;
+  return orderTable === table.name || orderTable === number || orderTable === fallback || orderTable === tableLabel_(table, index);
+}
+
 function getDailyStats_(orders, expenses) {
   const date = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   const paidToday = orders.filter((order) => order.status === "paid" && String(order.paidAt).slice(0, 10) === date);
@@ -411,6 +458,15 @@ function verifyAdmin_(token) {
   const expected = PropertiesService.getScriptProperties().getProperty("ADMIN_TOKEN");
   if (!expected) throw new Error("Chưa cấu hình ADMIN_TOKEN trong Apps Script.");
   if (String(token || "") !== expected) throw new Error("Mã quản trị không đúng.");
+}
+
+function isAdminToken_(token) {
+  try {
+    verifyAdmin_(token);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 function getSpreadsheet_() {

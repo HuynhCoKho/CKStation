@@ -215,6 +215,33 @@ main {
   grid-template-columns: 270px minmax(0, 1fr);
 }
 
+.admin-auth-shell {
+  display: grid;
+  min-height: calc(100vh - 96px);
+  padding: clamp(24px, 5vw, 56px);
+  place-items: start center;
+}
+
+.admin-auth-card {
+  background: #ffffff;
+  border: 1px solid #ded7ca;
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  max-width: 460px;
+  padding: 28px;
+  width: min(100%, 460px);
+}
+
+.admin-auth-card svg {
+  color: #214236;
+}
+
+.admin-auth-card p {
+  color: #667169;
+  line-height: 1.5;
+}
+
 .section-title {
   align-items: end;
   display: flex;

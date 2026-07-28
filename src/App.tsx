@@ -124,11 +124,11 @@ export function App() {
   const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
 
-  async function refresh(showIndicator = !data) {
+  async function refresh(showIndicator = !data, admin = false) {
     if (showIndicator) setLoading(true);
     setError("");
     try {
-      const nextData = normalizeData(await api.loadData());
+      const nextData = normalizeData(await api.loadData(admin));
       setData(nextData);
       localStorage.setItem(cacheKey, JSON.stringify(nextData));
     } catch (err) {
@@ -188,7 +188,7 @@ export function App() {
       {error && <p className="alert">{error}</p>}
       {loading && <p className="loading">Đang tải dữ liệu...</p>}
       {data && (isPublicMenu || view === "customer") && <CustomerPage data={data} onChanged={refresh} />}
-      {data && !isPublicMenu && view === "admin" && <AdminPage data={data} onChanged={refresh} />}
+      {data && !isPublicMenu && view === "admin" && <AdminPage data={data} onChanged={(admin = false) => refresh(false, admin)} />}
     </main>
   );
 }
@@ -404,8 +404,11 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
   );
 }
 
-function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }) {
+function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boolean) => void }) {
   const [token, setToken] = useState(localStorage.getItem("ck_admin_token") || "");
+  const [authStatus, setAuthStatus] = useState<"locked" | "checking" | "unlocked">(() =>
+    localStorage.getItem("ck_admin_token") ? "checking" : "locked",
+  );
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
   const [linkDraft, setLinkDraft] = useState<Partial<LinkItem>>({ active: true });
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
@@ -469,9 +472,63 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
   const incomeProfit = incomeSummary.revenue - incomeSummary.expense;
   const adminLinks = [...(data.links || [])].sort(compareLinkName);
 
-  function saveToken() {
-    localStorage.setItem("ck_admin_token", token);
+  async function unlockAdmin(event?: FormEvent) {
+    event?.preventDefault();
+    const trimmedToken = token.trim();
+    if (!trimmedToken) {
+      setAuthStatus("locked");
+      setAdminMessage("");
+      setAdminError("Vui lòng nhập mã quản trị.");
+      return;
+    }
+    setAuthStatus("checking");
+    try {
+      await api.verifyAdmin(trimmedToken);
+      localStorage.setItem("ck_admin_token", trimmedToken);
+      setToken(trimmedToken);
+      setAdminError("");
+      setAdminMessage("Đã mở khóa trang quản lý.");
+      setAuthStatus("unlocked");
+      onChanged(true);
+    } catch {
+      localStorage.removeItem("ck_admin_token");
+      setAdminMessage("");
+      setAdminError("Mã quản trị không đúng.");
+      setAuthStatus("locked");
+    }
   }
+
+  function lockAdmin() {
+    localStorage.removeItem("ck_admin_token");
+    setToken("");
+    setAuthStatus("locked");
+    setAdminMessage("");
+    setAdminError("");
+  }
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem("ck_admin_token");
+    if (!savedToken) return;
+    let active = true;
+    setAuthStatus("checking");
+    api
+      .verifyAdmin(savedToken)
+      .then(() => {
+        if (!active) return;
+        setToken(savedToken);
+        setAuthStatus("unlocked");
+        onChanged(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        localStorage.removeItem("ck_admin_token");
+        setToken("");
+        setAuthStatus("locked");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function saveMenu(event: FormEvent) {
     event.preventDefault();
@@ -480,7 +537,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       setMenuDraft({ active: true });
       setAdminError("");
       setAdminMessage("Đã lưu món/dịch vụ.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Không lưu được món/dịch vụ.";
       const needsScriptUpdate = Boolean(menuDraft.link) && message.includes("Món cần có tên, nhóm và giá");
@@ -500,7 +557,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       setLinkDraft({ active: true });
       setAdminError("");
       setAdminMessage("Đã lưu liên kết.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Không lưu được liên kết.";
       setAdminMessage("");
@@ -518,7 +575,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.removeLink(link.id);
       setAdminError("");
       setAdminMessage("Đã xóa liên kết.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không xóa được liên kết.");
@@ -530,7 +587,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.saveLink({ ...link, active: !link.active });
       setAdminError("");
       setAdminMessage(link.active ? "Đã ẩn liên kết." : "Đã hiển thị liên kết.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không cập nhật được liên kết.");
@@ -541,7 +598,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
     event.preventDefault();
     await api.addExpense(expense);
     setExpense({ date: todayKey(), name: "", amount: 0, note: "" });
-    onChanged();
+    onChanged(true);
   }
 
   async function saveTable(event: FormEvent) {
@@ -557,7 +614,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       setEditingTableName("");
       setAdminError("");
       setAdminMessage("Đã lưu bàn.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không lưu được bàn.");
@@ -569,7 +626,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.setTables(nextTables);
       setAdminError("");
       setAdminMessage("Đã cập nhật bàn.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không cập nhật được bàn.");
@@ -599,7 +656,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       setEditingCategory("");
       setAdminError("");
       setAdminMessage("Đã lưu nhóm món.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không lưu được nhóm món.");
@@ -616,7 +673,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.setCategories(categories.filter((item) => item !== category));
       setAdminError("");
       setAdminMessage("Đã xóa nhóm món.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không xóa được nhóm món.");
@@ -640,7 +697,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.setCategories(nextCategories);
       setAdminError("");
       setAdminMessage("Đã đổi thứ tự nhóm món.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không đổi được thứ tự nhóm món.");
@@ -652,7 +709,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.deleteMenuItem(id);
       setAdminError("");
       setAdminMessage("Đã ẩn món.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không ẩn được món.");
@@ -665,7 +722,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.removeMenuItem(item.id);
       setAdminError("");
       setAdminMessage("Đã xóa món.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không xóa được món.");
@@ -677,11 +734,34 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
       await api.updateOrder({ ...order, status, paidAt: status === "paid" ? new Date().toISOString() : order.paidAt });
       setAdminError("");
       setAdminMessage(status === "paid" ? "Đã tính tiền đơn." : "Đã hủy đơn.");
-      onChanged();
+      onChanged(true);
     } catch (err) {
       setAdminMessage("");
       setAdminError(err instanceof Error ? err.message : "Không cập nhật được đơn.");
     }
+  }
+
+  if (authStatus !== "unlocked") {
+    return (
+      <section className="admin-auth-shell">
+        <form className="admin-auth-card" onSubmit={unlockAdmin}>
+          <LockKeyhole size={34} />
+          <h1>Trang quản lý</h1>
+          <p>Chỉ nhà quản trị mới xem được doanh thu, liên kết và các chức năng sửa/xóa.</p>
+          <input
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            type="password"
+            placeholder="Nhập mã quản trị"
+            autoComplete="current-password"
+          />
+          <button className="primary" disabled={authStatus === "checking"}>
+            <LockKeyhole size={18} /> {authStatus === "checking" ? "Đang kiểm tra..." : "Mở khóa"}
+          </button>
+          {adminError && <p className="alert inline-alert">{adminError}</p>}
+        </form>
+      </section>
+    );
   }
 
   return (
@@ -711,8 +791,11 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
           Mã quản trị
           <input value={token} onChange={(e) => setToken(e.target.value)} type="password" placeholder="ADMIN_TOKEN" />
         </label>
-        <button onClick={saveToken}>
-          <LockKeyhole size={18} /> Lưu mã
+        <button onClick={unlockAdmin}>
+          <LockKeyhole size={18} /> Kiểm tra mã
+        </button>
+        <button onClick={lockAdmin}>
+          <LockKeyhole size={18} /> Khóa quản lý
         </button>
         <label>
           Số bàn phục vụ
@@ -720,7 +803,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: () => void }
             type="number"
             min={1}
             value={data.tableCount}
-            onChange={(e) => api.setTableCount(Number(e.target.value)).then(onChanged)}
+            onChange={(e) => api.setTableCount(Number(e.target.value)).then(() => onChanged(true))}
           />
         </label>
         <form className="table-name-form" onSubmit={saveTable}>
