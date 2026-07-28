@@ -498,14 +498,6 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
     }
   }
 
-  function lockAdmin() {
-    localStorage.removeItem("ck_admin_token");
-    setToken("");
-    setAuthStatus("locked");
-    setAdminMessage("");
-    setAdminError("");
-  }
-
   useEffect(() => {
     const savedToken = localStorage.getItem("ck_admin_token");
     if (!savedToken) return;
@@ -787,16 +779,6 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
           <input value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.target.value })} placeholder="Ghi chú" />
           <button className="primary"><Save size={18} /> Lưu chi phí</button>
         </form>
-        <label>
-          Mã quản trị
-          <input value={token} onChange={(e) => setToken(e.target.value)} type="password" placeholder="ADMIN_TOKEN" />
-        </label>
-        <button onClick={unlockAdmin}>
-          <LockKeyhole size={18} /> Kiểm tra mã
-        </button>
-        <button onClick={lockAdmin}>
-          <LockKeyhole size={18} /> Khóa quản lý
-        </button>
         <label>
           Số bàn phục vụ
           <input
