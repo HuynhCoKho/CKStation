@@ -6,7 +6,7 @@ const apiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").repl
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
 function adminToken() {
-  return localStorage.getItem("ck_admin_token") || "";
+  return sessionStorage.getItem("ck_admin_token") || localStorage.getItem("ck_admin_token") || "";
 }
 
 async function request<T>(action: string, payload: Record<string, unknown> = {}, admin = false, tokenOverride = ""): Promise<T> {

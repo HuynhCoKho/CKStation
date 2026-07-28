@@ -6,11 +6,37 @@ import type { AppData, Expense, LinkItem, MenuItem, Order, OrderItem, TableState
 
 type View = "customer" | "admin";
 const cacheKey = "ckstation_cached_data";
+const adminTokenKey = "ck_admin_token";
+
+function savedAdminToken() {
+  return sessionStorage.getItem(adminTokenKey) || localStorage.getItem(adminTokenKey) || "";
+}
+
+function clearSavedAdminToken() {
+  sessionStorage.removeItem(adminTokenKey);
+  localStorage.removeItem(adminTokenKey);
+}
+
+function publicOnlyData(data: AppData): AppData {
+  return {
+    ...data,
+    orders: [],
+    expenses: [],
+    links: [],
+    stats: {
+      date: todayKey(),
+      revenue: 0,
+      expense: 0,
+      profit: 0,
+      paidOrders: 0,
+    },
+  };
+}
 
 function readCachedData() {
   try {
     const raw = localStorage.getItem(cacheKey);
-    return raw ? normalizeData(JSON.parse(raw) as AppData) : null;
+    return raw ? publicOnlyData(normalizeData(JSON.parse(raw) as AppData)) : null;
   } catch {
     return null;
   }
@@ -130,7 +156,11 @@ export function App() {
     try {
       const nextData = normalizeData(await api.loadData(admin));
       setData(nextData);
-      localStorage.setItem(cacheKey, JSON.stringify(nextData));
+      if (admin) {
+        localStorage.removeItem(cacheKey);
+      } else {
+        localStorage.setItem(cacheKey, JSON.stringify(publicOnlyData(nextData)));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không tải được dữ liệu.");
     } finally {
@@ -143,7 +173,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (isPublicMenu || view !== "admin" || !localStorage.getItem("ck_admin_token")) return;
+    if (isPublicMenu || view !== "admin" || !savedAdminToken()) return;
     refresh(false, true);
     const interval = window.setInterval(() => refresh(false, true), 15000);
     return () => window.clearInterval(interval);
@@ -178,7 +208,7 @@ export function App() {
             <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
               <Settings size={18} /> Quản lý
             </button>
-            <button onClick={() => refresh(true, view === "admin" && Boolean(localStorage.getItem("ck_admin_token")))} aria-label="Tải lại">
+            <button onClick={() => refresh(true, view === "admin" && Boolean(savedAdminToken()))} aria-label="Tải lại">
               <RefreshCw size={18} />
             </button>
           </nav>
@@ -405,9 +435,9 @@ function CustomerPage({ data, onChanged }: { data: AppData; onChanged: () => voi
 }
 
 function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boolean) => void }) {
-  const [token, setToken] = useState(localStorage.getItem("ck_admin_token") || "");
+  const [token, setToken] = useState(savedAdminToken());
   const [authStatus, setAuthStatus] = useState<"locked" | "checking" | "unlocked">(() =>
-    localStorage.getItem("ck_admin_token") ? "checking" : "locked",
+    savedAdminToken() ? "checking" : "locked",
   );
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
   const [linkDraft, setLinkDraft] = useState<Partial<LinkItem>>({ active: true });
@@ -484,14 +514,17 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
     setAuthStatus("checking");
     try {
       await api.verifyAdmin(trimmedToken);
-      localStorage.setItem("ck_admin_token", trimmedToken);
+      sessionStorage.setItem(adminTokenKey, trimmedToken);
+      localStorage.removeItem(adminTokenKey);
+      localStorage.removeItem(cacheKey);
       setToken(trimmedToken);
       setAdminError("");
       setAdminMessage("Đã mở khóa trang quản lý.");
       setAuthStatus("unlocked");
       onChanged(true);
     } catch {
-      localStorage.removeItem("ck_admin_token");
+      clearSavedAdminToken();
+      localStorage.removeItem(cacheKey);
       setAdminMessage("");
       setAdminError("Mã quản trị không đúng.");
       setAuthStatus("locked");
@@ -499,7 +532,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
   }
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("ck_admin_token");
+    const savedToken = savedAdminToken();
     if (!savedToken) return;
     let active = true;
     setAuthStatus("checking");
@@ -507,13 +540,17 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
       .verifyAdmin(savedToken)
       .then(() => {
         if (!active) return;
+        sessionStorage.setItem(adminTokenKey, savedToken);
+        localStorage.removeItem(adminTokenKey);
+        localStorage.removeItem(cacheKey);
         setToken(savedToken);
         setAuthStatus("unlocked");
         onChanged(true);
       })
       .catch(() => {
         if (!active) return;
-        localStorage.removeItem("ck_admin_token");
+        clearSavedAdminToken();
+        localStorage.removeItem(cacheKey);
         setToken("");
         setAuthStatus("locked");
       });
