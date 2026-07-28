@@ -143,9 +143,9 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (isPublicMenu || view !== "admin") return;
-    refresh(false);
-    const interval = window.setInterval(() => refresh(false), 15000);
+    if (isPublicMenu || view !== "admin" || !localStorage.getItem("ck_admin_token")) return;
+    refresh(false, true);
+    const interval = window.setInterval(() => refresh(false, true), 15000);
     return () => window.clearInterval(interval);
   }, [isPublicMenu, view]);
 
@@ -178,7 +178,7 @@ export function App() {
             <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
               <Settings size={18} /> Quản lý
             </button>
-            <button onClick={() => refresh(true)} aria-label="Tải lại">
+            <button onClick={() => refresh(true, view === "admin" && Boolean(localStorage.getItem("ck_admin_token")))} aria-label="Tải lại">
               <RefreshCw size={18} />
             </button>
           </nav>
