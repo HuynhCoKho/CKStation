@@ -145,10 +145,12 @@ function MonthVNInput({ value, onChange }: { value: string; onChange: (value: st
 export function App() {
   const normalizedPath = window.location.pathname.toLowerCase().replace(/\/$/, "");
   const isPublicMenu = normalizedPath.endsWith("/menu") || normalizedPath.endsWith("/menu.html");
-  const [view, setView] = useState<View>("customer");
+  const adminModeRequested = new URLSearchParams(window.location.search).has("admin");
+  const [view, setView] = useState<View>(adminModeRequested ? "admin" : "customer");
   const [data, setData] = useState<AppData | null>(() => readCachedData());
   const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
+  const showAdminControls = adminModeRequested || Boolean(savedAdminToken());
 
   async function refresh(showIndicator = !data, admin = false) {
     if (showIndicator) setLoading(true);
@@ -205,9 +207,11 @@ export function App() {
             <button className={view === "customer" ? "active" : ""} onClick={() => setView("customer")}>
               <Coffee size={18} /> Khách hàng
             </button>
-            <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
-              <Settings size={18} /> Quản lý
-            </button>
+            {showAdminControls && (
+              <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
+                <Settings size={18} /> Quản lý
+              </button>
+            )}
             <button onClick={() => refresh(true, view === "admin" && Boolean(savedAdminToken()))} aria-label="Tải lại">
               <RefreshCw size={18} />
             </button>
