@@ -457,7 +457,7 @@ function getDailyStats_(orders, expenses) {
 function verifyAdmin_(token) {
   const expected = PropertiesService.getScriptProperties().getProperty("ADMIN_TOKEN");
   if (!expected) throw new Error("Chưa cấu hình ADMIN_TOKEN trong Apps Script.");
-  if (String(token || "") !== expected) throw new Error("Mã quản trị không đúng.");
+  if (String(token || "").trim() !== String(expected || "").trim()) throw new Error("Mã quản trị không đúng.");
 }
 
 function isAdminToken_(token) {
