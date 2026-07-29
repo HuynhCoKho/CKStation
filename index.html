@@ -8,5 +8,17 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-  </body>
+  
+<!-- Huynh Co Kho ownership stamp -->
+<div class="hck-owner-stamp" aria-label="Hu?nh C? Kh?">
+  <img src="assets/huynh-co-kho-stamp.png" alt="Hu?nh C? Kh?" loading="lazy" decoding="async">
+</div>
+<style>
+  .hck-owner-stamp{position:fixed;right:14px;bottom:14px;width:72px;height:72px;z-index:2147483000;opacity:.9;pointer-events:none;user-select:none}
+  .hck-owner-stamp img{display:block;width:100%;height:100%;object-fit:contain;border-radius:8px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.18))}
+  @media (max-width:640px){.hck-owner-stamp{right:10px;bottom:10px;width:56px;height:56px;opacity:.86}}
+  @media print{.hck-owner-stamp{display:none!important}}
+</style>
+<!-- /Huynh Co Kho ownership stamp -->
+</body>
 </html>
