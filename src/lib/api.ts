@@ -1,7 +1,10 @@
 import type { AppData, Expense, LinkItem, MenuItem, Order, TableState } from "../types";
 import { mockData } from "./mockData";
 
-const apiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/^﻿/, "").trim();
+// Bien moi truong dan tu file co BOM se mang ky tu vo hinh o dau, lam hong URL.
+const byteOrderMark = 0xfeff;
+const rawApiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").trim();
+const apiUrl = (rawApiUrl.charCodeAt(0) === byteOrderMark ? rawApiUrl.slice(1) : rawApiUrl).trim();
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
