@@ -5,17 +5,17 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+# Publishing by pushing a branch only needs write access to the repo contents.
+# The pages/id-token permissions belonged to the github-pages environment flow.
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,17 +27,16 @@ jobs:
       - run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # Pages serves this branch as-is, so the built files become the site root.
+      # .nojekyll stops Jekyll from dropping the _-prefixed files Vite emits.
+      - name: Publish dist to gh-pages
+        run: |
+          cd dist
+          touch .nojekyll
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Publish ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:gh-pages
