@@ -16,20 +16,32 @@ const HEADERS = {
   Settings: ["key", "value"],
 };
 
+const READY_CACHE_KEY = "ck_sheets_ready";
+const READY_CACHE_SECONDS = 21600;
+
 function setup() {
   const ss = getSpreadsheet_();
   Object.keys(HEADERS).forEach((name) => ensureSheet_(ss, name, HEADERS[name]));
   setSettingIfEmpty_("tableCount", "12");
   seedMenuIfEmpty_();
+  CacheService.getScriptCache().put(READY_CACHE_KEY, "1", READY_CACHE_SECONDS);
+}
+
+// setup() mở và quét lại toàn bộ sheet, tốn vài giây mỗi lần. Chỉ chạy lại khi
+// cache hết hạn để request thường không vượt quá thời gian chờ của trình duyệt.
+function ensureReady_() {
+  if (CacheService.getScriptCache().get(READY_CACHE_KEY)) return;
+  setup();
 }
 
 function doGet(e) {
   try {
-    setup();
     const action = e.parameter.action;
     if (!action) {
       return output_(e, { ok: true, data: { service: "CK Station API", time: new Date().toISOString() } });
     }
+
+    ensureReady_();
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
     const adminActions = ["verifyAdmin", "saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
@@ -47,7 +59,7 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    setup();
+    ensureReady_();
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
@@ -94,11 +106,13 @@ function loadData_(isAdmin) {
   }));
 
   const orderRows = readObjects_(SHEETS.orders);
-  const itemRows = readObjects_(SHEETS.orderItems);
-  const orders = orderRows.map((order) => {
-    const items = itemRows
-      .filter((item) => item.orderId === order.id)
-      .map((item) => ({
+  const itemsByOrder = {};
+  // Trang khách chỉ cần biết bàn nào còn đơn mở, không cần chi tiết món.
+  if (isAdmin) {
+    readObjects_(SHEETS.orderItems).forEach((item) => {
+      const key = String(item.orderId || "");
+      if (!itemsByOrder[key]) itemsByOrder[key] = [];
+      itemsByOrder[key].push({
         id: item.id,
         menuItemId: item.menuItemId,
         name: item.name,
@@ -106,7 +120,11 @@ function loadData_(isAdmin) {
         quantity: Number(item.quantity || 0),
         note: item.note || "",
         status: item.status || "new",
-      }));
+      });
+    });
+  }
+  const orders = orderRows.map((order) => {
+    const items = itemsByOrder[String(order.id || "")] || [];
     return {
       id: order.id,
       tableNumber: String(order.tableNumber || ""),
@@ -119,22 +137,26 @@ function loadData_(isAdmin) {
     };
   });
 
-  const expenses = readObjects_(SHEETS.expenses).map((expense) => ({
-    id: expense.id,
-    date: expense.date,
-    name: expense.name,
-    amount: Number(expense.amount || 0),
-    note: expense.note || "",
-  }));
+  const expenses = isAdmin
+    ? readObjects_(SHEETS.expenses).map((expense) => ({
+        id: expense.id,
+        date: expense.date,
+        name: expense.name,
+        amount: Number(expense.amount || 0),
+        note: expense.note || "",
+      }))
+    : [];
 
-  const links = readObjects_(SHEETS.links).map((link) => ({
-    id: link.id,
-    name: link.name || "",
-    url: link.url || "",
-    description: link.description || "",
-    note: link.note || "",
-    active: String(link.active).toLowerCase() !== "false",
-  }));
+  const links = isAdmin
+    ? readObjects_(SHEETS.links).map((link) => ({
+        id: link.id,
+        name: link.name || "",
+        url: link.url || "",
+        description: link.description || "",
+        note: link.note || "",
+        active: String(link.active).toLowerCase() !== "false",
+      }))
+    : [];
 
   const tableStatuses = getTables_().map(function (table, index) {
     const hasOpenOrder = orders.some(function (order) {
@@ -293,6 +315,7 @@ function removeMenuItem_(id) {
   if (index < 0) throw new Error("Không tìm thấy món.");
   const item = rows[index];
   sheet.deleteRow(index + 2);
+  invalidateSheet_(SHEETS.menu);
   return item;
 }
 
@@ -317,13 +340,14 @@ function removeLink_(id) {
   if (index < 0) throw new Error("Không tìm thấy liên kết.");
   const item = rows[index];
   sheet.deleteRow(index + 2);
+  invalidateSheet_(SHEETS.links);
   return item;
 }
 
 function updateOrder_(order) {
   if (!order || !order.id) throw new Error("Đơn hàng không hợp lệ.");
   const total = Number(order.total || 0);
-  upsertObject_(SHEETS.orders, "id", {
+  const saved = {
     id: order.id,
     tableNumber: String(order.tableNumber),
     customerName: order.customerName || "",
@@ -331,7 +355,8 @@ function updateOrder_(order) {
     createdAt: order.createdAt || "",
     paidAt: order.paidAt || "",
     total,
-  });
+  };
+  upsertObject_(SHEETS.orders, "id", saved);
   if (order.items && order.items.length) {
     order.items.forEach((item) => {
       upsertObject_(SHEETS.orderItems, "id", {
@@ -346,7 +371,10 @@ function updateOrder_(order) {
       });
     });
   }
-  return loadData_().orders.find((saved) => saved.id === order.id);
+  // Trước đây hàm này gọi loadData_() không truyền isAdmin nên luôn trả về
+  // undefined, đồng thời đọc lại toàn bộ bảng tính chỉ để lấy một đơn.
+  saved.items = order.items || [];
+  return saved;
 }
 
 function addExpense_(expense) {
@@ -469,10 +497,26 @@ function isAdminToken_(token) {
   }
 }
 
+// Bộ nhớ đệm sống trong một lần chạy: mỗi request chỉ mở bảng tính và đọc mỗi
+// sheet đúng một lần thay vì hàng chục lần như trước.
+let spreadsheet_ = null;
+let sheetRows_ = {};
+
 function getSpreadsheet_() {
+  if (spreadsheet_) return spreadsheet_;
   const id = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
   if (!id) throw new Error("Chưa cấu hình SPREADSHEET_ID trong Apps Script.");
-  return SpreadsheetApp.openById(id);
+  spreadsheet_ = SpreadsheetApp.openById(id);
+  return spreadsheet_;
+}
+
+function invalidateSheet_(name) {
+  delete sheetRows_[name];
+}
+
+function getWritableSheet_(name) {
+  const ss = getSpreadsheet_();
+  return ss.getSheetByName(name) || ensureSheet_(ss, name, HEADERS[name]);
 }
 
 function ensureSheet_(ss, name, headers) {
@@ -494,11 +538,15 @@ function ensureSheet_(ss, name, headers) {
 }
 
 function readObjects_(name) {
+  if (sheetRows_[name]) return sheetRows_[name];
   const sheet = getSpreadsheet_().getSheetByName(name);
-  if (!sheet || sheet.getLastRow() < 2) return [];
+  if (!sheet || sheet.getLastRow() < 2) {
+    sheetRows_[name] = [];
+    return sheetRows_[name];
+  }
   const values = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues();
   const headers = values.shift();
-  return values
+  sheetRows_[name] = values
     .filter((row) => row.some((cell) => cell !== ""))
     .map((row) => {
       const obj = {};
@@ -507,16 +555,18 @@ function readObjects_(name) {
       });
       return obj;
     });
+  return sheetRows_[name];
 }
 
 function appendObject_(name, object) {
-  const sheet = getSpreadsheet_().getSheetByName(name);
+  const sheet = getWritableSheet_(name);
   const headers = getSheetHeaders_(sheet, name);
   sheet.appendRow(headers.map((header) => object[header]));
+  invalidateSheet_(name);
 }
 
 function upsertObject_(name, key, object) {
-  const sheet = getSpreadsheet_().getSheetByName(name);
+  const sheet = getWritableSheet_(name);
   const headers = getSheetHeaders_(sheet, name);
   const keyCol = headers.indexOf(key) + 1;
   const values = sheet.getLastRow() > 1 ? sheet.getRange(2, keyCol, sheet.getLastRow() - 1, 1).getValues() : [];
@@ -527,6 +577,7 @@ function upsertObject_(name, key, object) {
   } else {
     sheet.appendRow(row);
   }
+  invalidateSheet_(name);
 }
 
 function getSheetHeaders_(sheet, name) {
