@@ -1,7 +1,10 @@
 import type { AppData, Expense, LinkItem, MenuItem, Order, TableState } from "../types";
 import { mockData } from "./mockData";
 
-const apiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/^\uFEFF/, "").trim();
+// Bien moi truong dan tu file co BOM se mang ky tu vo hinh o dau, lam hong URL.
+const byteOrderMark = 0xfeff;
+const rawApiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").trim();
+const apiUrl = (rawApiUrl.charCodeAt(0) === byteOrderMark ? rawApiUrl.slice(1) : rawApiUrl).trim();
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -61,14 +64,19 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   return data;
 }
 
+// Apps Script phải mở bảng tính trước khi trả lời nên request đầu ngày có thể
+// chậm hơn nhiều so với lúc bảng còn ít dòng. Thời gian chờ cần rộng hơn chu kỳ
+// tự tải lại, nếu không mọi lần tải sẽ hết giờ ngay khi dữ liệu lớn dần.
+const requestTimeoutMs = 45000;
+
 function jsonp<T>(url: string, params: Record<string, string>): Promise<T> {
   return new Promise((resolve, reject) => {
     const callback = `ckstation_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement("script");
     const timeout = window.setTimeout(() => {
       cleanup();
-      reject(new Error("Không kết nối được Apps Script."));
-    }, 15000);
+      reject(new Error("Apps Script không trả lời sau 45 giây. Mở link Apps Script trực tiếp để kiểm tra deployment còn sống và còn quyền truy cập."));
+    }, requestTimeoutMs);
 
     function cleanup() {
       window.clearTimeout(timeout);
@@ -86,7 +94,7 @@ function jsonp<T>(url: string, params: Record<string, string>): Promise<T> {
     Object.entries(params).forEach(([key, value]) => target.searchParams.set(key, value));
     script.onerror = () => {
       cleanup();
-      reject(new Error("Không tải được Apps Script."));
+      reject(new Error("Không tải được Apps Script. Kiểm tra đường mạng và địa chỉ deployment."));
     };
     script.src = target.toString();
     document.head.appendChild(script);

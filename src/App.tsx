@@ -1,5 +1,5 @@
 import { BookOpen, ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, RefreshCw, Save, Settings, Trash2 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./lib/api";
 import { formatDateVN, formatMoney, formatMonthVN, parseDateVN, parseMonthVN, todayKey } from "./lib/money";
 import type { AppData, Expense, LinkItem, MenuItem, Order, OrderItem, TableState } from "./types";
@@ -151,8 +151,13 @@ export function App() {
   const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
   const showAdminControls = !isPublicMenu || adminModeRequested || Boolean(savedAdminToken());
+  const refreshing = useRef(false);
 
   async function refresh(showIndicator = !data, admin = false) {
+    // Apps Script xử lý tuần tự theo tài khoản: gửi chồng request chỉ làm mỗi
+    // request phải xếp hàng lâu hơn rồi hết thời gian chờ.
+    if (refreshing.current) return;
+    refreshing.current = true;
     if (showIndicator) setLoading(true);
     setError("");
     try {
@@ -166,6 +171,7 @@ export function App() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không tải được dữ liệu.");
     } finally {
+      refreshing.current = false;
       if (showIndicator) setLoading(false);
     }
   }
@@ -177,7 +183,7 @@ export function App() {
   useEffect(() => {
     if (isPublicMenu || view !== "admin" || !savedAdminToken()) return;
     refresh(false, true);
-    const interval = window.setInterval(() => refresh(false, true), 15000);
+    const interval = window.setInterval(() => refresh(false, true), 60000);
     return () => window.clearInterval(interval);
   }, [isPublicMenu, view]);
 
