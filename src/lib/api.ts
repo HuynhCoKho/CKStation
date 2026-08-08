@@ -4,7 +4,8 @@ import { mockData } from "./mockData";
 // Bien moi truong dan tu file co BOM se mang ky tu vo hinh o dau, lam hong URL.
 const byteOrderMark = 0xfeff;
 const rawApiUrl = ((import.meta.env.VITE_API_URL as string | undefined) || "").trim();
-const apiUrl = (rawApiUrl.charCodeAt(0) === byteOrderMark ? rawApiUrl.slice(1) : rawApiUrl).trim();
+const defaultApiUrl = "https://script.google.com/macros/s/AKfycbwmFrMNlZoi9m9haEapcgQ5wlOMA1BVboQVqygJf57WdOy2KKlq_kGguWIxHVvoXYe_/exec";
+const apiUrl = (rawApiUrl.charCodeAt(0) === byteOrderMark ? rawApiUrl.slice(1) : rawApiUrl).trim() || defaultApiUrl;
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
