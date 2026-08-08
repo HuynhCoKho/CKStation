@@ -44,7 +44,7 @@ function doGet(e) {
     ensureReady_();
 
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
-    const adminActions = ["verifyAdmin", "saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["verifyAdmin", "saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "saveExpense", "removeExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(e.parameter.token);
@@ -63,7 +63,7 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents || "{}");
     const action = body.action;
     const payload = body.payload || {};
-    const adminActions = ["verifyAdmin", "saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
+    const adminActions = ["verifyAdmin", "saveMenuItem", "deleteMenuItem", "removeMenuItem", "saveLink", "removeLink", "updateOrder", "addExpense", "saveExpense", "removeExpense", "setTableCount", "setTableNames", "setTables", "setCategories"];
 
     if (adminActions.indexOf(action) >= 0) {
       verifyAdmin_(body.token);
@@ -87,6 +87,8 @@ function route_(action, payload, isAdmin) {
   if (action === "removeLink") return removeLink_(payload.id);
   if (action === "updateOrder") return updateOrder_(payload.order);
   if (action === "addExpense") return addExpense_(payload.expense);
+  if (action === "saveExpense") return saveExpense_(payload.expense);
+  if (action === "removeExpense") return removeExpense_(payload.id);
   if (action === "setTableCount") return setTableCount_(payload.tableCount);
   if (action === "setTableNames") return setTableNames_(payload.tableNames);
   if (action === "setTables") return setTables_(payload.tables);
@@ -388,6 +390,30 @@ function addExpense_(expense) {
   };
   appendObject_(SHEETS.expenses, saved);
   return saved;
+}
+
+function saveExpense_(expense) {
+  if (!expense || !expense.name || !expense.amount) throw new Error("Chi phí cần có tên và số tiền.");
+  const saved = {
+    id: expense.id || Utilities.getUuid(),
+    date: expense.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+    name: String(expense.name),
+    amount: Number(expense.amount),
+    note: expense.note || "",
+  };
+  upsertObject_(SHEETS.expenses, "id", saved);
+  return saved;
+}
+
+function removeExpense_(id) {
+  const sheet = getSpreadsheet_().getSheetByName(SHEETS.expenses);
+  const rows = readObjects_(SHEETS.expenses);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) throw new Error("Không tìm thấy chi phí.");
+  const item = rows[index];
+  sheet.deleteRow(index + 2);
+  invalidateSheet_(SHEETS.expenses);
+  return item;
 }
 
 function setTableCount_(tableCount) {

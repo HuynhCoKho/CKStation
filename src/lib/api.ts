@@ -40,6 +40,8 @@ export const api = {
   removeLink: (id: string) => request<LinkItem>("removeLink", { id }, true),
   updateOrder: (order: Order) => request<Order>("updateOrder", { order }, true),
   addExpense: (expense: Omit<Expense, "id">) => request<Expense>("addExpense", { expense }, true),
+  saveExpense: (expense: Partial<Expense>) => request<Expense>("saveExpense", { expense }, true),
+  removeExpense: (id: string) => request<Expense>("removeExpense", { id }, true),
   setTableCount: (tableCount: number) => request<number>("setTableCount", { tableCount }, true),
   setTableNames: (tableNames: string[]) => request<string[]>("setTableNames", { tableNames }, true),
   setTables: (tables: TableState[]) => request<TableState[]>("setTables", { tables }, true),
@@ -58,6 +60,8 @@ function mockRequest(action: string, payload: Record<string, unknown>) {
   if (action === "removeLink") return data.links[0];
   if (action === "updateOrder") return payload.order;
   if (action === "addExpense") return { id: crypto.randomUUID(), ...(payload.expense as object) };
+  if (action === "saveExpense") return { id: crypto.randomUUID(), ...(payload.expense as object) };
+  if (action === "removeExpense") return data.expenses[0];
   if (action === "setTableCount") return payload.tableCount;
   if (action === "setTableNames") return payload.tableNames;
   if (action === "setTables") return payload.tables;

@@ -116,7 +116,12 @@ function DateVNInput({ value, onChange, required = false }: { value: string; onC
       required={required}
       value={text}
       onBlur={commit}
-      onChange={(event) => setText(event.target.value)}
+      onChange={(event) => {
+        const nextText = event.target.value;
+        setText(nextText);
+        const parsed = parseDateVN(nextText);
+        if (parsed) onChange(parsed);
+      }}
     />
   );
 }
@@ -138,7 +143,20 @@ function MonthVNInput({ value, onChange }: { value: string; onChange: (value: st
     }
   }
 
-  return <input inputMode="numeric" placeholder="mm/yyyy" value={text} onBlur={commit} onChange={(event) => setText(event.target.value)} />;
+  return (
+    <input
+      inputMode="numeric"
+      placeholder="mm/yyyy"
+      value={text}
+      onBlur={commit}
+      onChange={(event) => {
+        const nextText = event.target.value;
+        setText(nextText);
+        const parsed = parseMonthVN(nextText);
+        if (parsed) onChange(parsed);
+      }}
+    />
+  );
 }
 
 export function App() {
@@ -465,6 +483,7 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
   const [menuDraft, setMenuDraft] = useState<Partial<MenuItem>>({ active: true });
   const [linkDraft, setLinkDraft] = useState<Partial<LinkItem>>({ active: true });
   const [expense, setExpense] = useState<Omit<Expense, "id">>({ date: todayKey(), name: "", amount: 0, note: "" });
+  const [editingExpenseId, setEditingExpenseId] = useState("");
   const [tableDraft, setTableDraft] = useState("");
   const [editingTableName, setEditingTableName] = useState("");
   const [categoryDraft, setCategoryDraft] = useState("");
@@ -648,9 +667,51 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
 
   async function saveExpense(event: FormEvent) {
     event.preventDefault();
-    await api.addExpense(expense);
-    setExpense({ date: todayKey(), name: "", amount: 0, note: "" });
-    onChanged(true);
+    try {
+      if (editingExpenseId) {
+        await api.saveExpense({ id: editingExpenseId, ...expense });
+      } else {
+        await api.addExpense(expense);
+      }
+      setExpense({ date: todayKey(), name: "", amount: 0, note: "" });
+      setEditingExpenseId("");
+      setAdminError("");
+      setAdminMessage(editingExpenseId ? "Đã cập nhật chi phí." : "Đã lưu chi phí.");
+      onChanged(true);
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không lưu được chi phí.");
+    }
+  }
+
+  function editExpense(item: Expense) {
+    setExpense({
+      date: String(item.date || todayKey()).slice(0, 10),
+      name: item.name,
+      amount: item.amount,
+      note: item.note || "",
+    });
+    setEditingExpenseId(item.id);
+    setAdminSection("income");
+    setAdminMessage("Đã đưa chi phí vào form để sửa.");
+    setAdminError("");
+  }
+
+  async function removeExpense(item: Expense) {
+    if (!window.confirm(`Xóa chi phí "${item.name}"?`)) return;
+    try {
+      await api.removeExpense(item.id);
+      if (editingExpenseId === item.id) {
+        setExpense({ date: todayKey(), name: "", amount: 0, note: "" });
+        setEditingExpenseId("");
+      }
+      setAdminError("");
+      setAdminMessage("Đã xóa chi phí.");
+      onChanged(true);
+    } catch (err) {
+      setAdminMessage("");
+      setAdminError(err instanceof Error ? err.message : "Không xóa được chi phí.");
+    }
   }
 
   async function saveTable(event: FormEvent) {
@@ -837,7 +898,18 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
           <input value={expense.name} onChange={(e) => setExpense({ ...expense, name: e.target.value })} placeholder="Tên chi phí" required />
           <input type="number" value={expense.amount || ""} onChange={(e) => setExpense({ ...expense, amount: Number(e.target.value) })} placeholder="Số tiền" required />
           <input value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.target.value })} placeholder="Ghi chú" />
-          <button className="primary"><Save size={18} /> Lưu chi phí</button>
+          <button className="primary"><Save size={18} /> {editingExpenseId ? "Cập nhật chi phí" : "Lưu chi phí"}</button>
+          {editingExpenseId && (
+            <button
+              type="button"
+              onClick={() => {
+                setExpense({ date: todayKey(), name: "", amount: 0, note: "" });
+                setEditingExpenseId("");
+              }}
+            >
+              Hủy sửa chi phí
+            </button>
+          )}
         </form>
         <label>
           Số bàn phục vụ
@@ -1081,12 +1153,32 @@ function AdminPage({ data, onChanged }: { data: AppData; onChanged: (admin?: boo
                 <h2>Chi phí</h2>
                 {expensesInRange.length ? (
                   expensesInRange.map((item) => (
-                    <div className="income-row" key={item.id}>
+                    <div className="income-row editable-income-row" key={item.id} onClick={() => editExpense(item)}>
                       <div>
                         <strong>{item.name}</strong>
                         <span>{formatDateVN(item.date)}{item.note ? ` · ${item.note}` : ""}</span>
                       </div>
                       <strong>{formatMoney(item.amount)}</strong>
+                      <div className="actions">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            editExpense(item);
+                          }}
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeExpense(item);
+                          }}
+                        >
+                          Xóa
+                        </button>
+                      </div>
                     </div>
                   ))
                 ) : (
