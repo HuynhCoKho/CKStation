@@ -146,17 +146,26 @@ export function App() {
   const normalizedPath = window.location.pathname.toLowerCase().replace(/\/$/, "");
   const isPublicMenu = normalizedPath.endsWith("/menu") || normalizedPath.endsWith("/menu.html");
   const adminModeRequested = new URLSearchParams(window.location.search).has("admin");
-  const [view, setView] = useState<View>(adminModeRequested ? "admin" : "customer");
+  const [view, setView] = useState<View>(isPublicMenu ? "customer" : "admin");
   const [data, setData] = useState<AppData | null>(() => readCachedData());
   const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
   const showAdminControls = !isPublicMenu || adminModeRequested || Boolean(savedAdminToken());
   const refreshing = useRef(false);
+  const pendingRefresh = useRef<{ showIndicator: boolean; admin: boolean } | null>(null);
 
   async function refresh(showIndicator = !data, admin = false) {
     // Apps Script xử lý tuần tự theo tài khoản: gửi chồng request chỉ làm mỗi
-    // request phải xếp hàng lâu hơn rồi hết thời gian chờ.
-    if (refreshing.current) return;
+    // request phải xếp hàng lâu hơn rồi hết thời gian chờ. Nếu thao tác quản trị
+    // cần tải lại trong lúc đang tải, giữ lượt mới nhất để chạy ngay sau đó.
+    if (refreshing.current) {
+      const waiting = pendingRefresh.current;
+      pendingRefresh.current = {
+        showIndicator: showIndicator || Boolean(waiting?.showIndicator),
+        admin: admin || Boolean(waiting?.admin),
+      };
+      return;
+    }
     refreshing.current = true;
     if (showIndicator) setLoading(true);
     setError("");
@@ -173,6 +182,11 @@ export function App() {
     } finally {
       refreshing.current = false;
       if (showIndicator) setLoading(false);
+      const nextRefresh = pendingRefresh.current;
+      pendingRefresh.current = null;
+      if (nextRefresh) {
+        void refresh(nextRefresh.showIndicator, nextRefresh.admin);
+      }
     }
   }
 
