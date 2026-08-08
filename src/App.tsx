@@ -5,7 +5,7 @@ import { formatDateVN, formatMoney, formatMonthVN, parseDateVN, parseMonthVN, to
 import type { AppData, Expense, LinkItem, MenuItem, Order, OrderItem, TableState } from "./types";
 
 type View = "customer" | "admin";
-const cacheKey = "ckstation_cached_data";
+const cacheKey = "ckstation_cached_data_v2";
 const adminTokenKey = "ck_admin_token";
 
 function savedAdminToken() {
