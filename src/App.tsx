@@ -112,7 +112,7 @@ function DateVNInput({ value, onChange, required = false }: { value: string; onC
   return (
     <input
       inputMode="numeric"
-      pattern="\\d{1,2}/\\d{1,2}/\\d{4}"
+      pattern="\d{1,2}/\d{1,2}/\d{4}"
       placeholder="dd/mm/yyyy"
       required={required}
       value={text}
@@ -139,7 +139,7 @@ function MonthVNInput({ value, onChange }: { value: string; onChange: (value: st
     }
   }
 
-  return <input inputMode="numeric" pattern="\\d{1,2}/\\d{4}" placeholder="mm/yyyy" value={text} onBlur={commit} onChange={(event) => setText(event.target.value)} />;
+  return <input inputMode="numeric" pattern="\d{1,2}/\d{4}" placeholder="mm/yyyy" value={text} onBlur={commit} onChange={(event) => setText(event.target.value)} />;
 }
 
 export function App() {
