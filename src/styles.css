@@ -60,8 +60,17 @@
 }
 
 body {
+  isolation: isolate;
   margin: 0;
   min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(187, 236, 223, .52) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(187, 236, 223, .38) 1px, transparent 1px),
+    radial-gradient(circle at 50% 32%, rgba(255,255,255,.64), transparent 28%),
+    radial-gradient(circle at 84% 18%, rgba(132,223,191,.34), transparent 28%),
+    radial-gradient(circle at 10% 82%, rgba(70,173,126,.24), transparent 32%),
+    linear-gradient(135deg, #dcfff5 0%, #bdf0e4 52%, #e4fff6 100%);
+  background-size: 118px 118px, 118px 118px, auto, auto, auto, auto;
 }
 
 /* Layered radial washes read as light falling into the page. Painted on a
@@ -69,15 +78,42 @@ body {
    iOS Safari ignores and which repaints the whole page on every scroll. */
 body::before {
   background:
-    radial-gradient(1100px 620px at 12% -12%, rgba(255, 255, 255, 0.95), transparent 60%),
-    radial-gradient(900px 540px at 88% 4%, rgba(79, 211, 165, 0.4), transparent 62%),
-    radial-gradient(1000px 700px at 50% 108%, rgba(10, 127, 92, 0.26), transparent 66%),
-    linear-gradient(178deg, var(--mint-100) 0%, var(--page) 45%, var(--mint-200) 100%);
+    radial-gradient(ellipse at 36% 36%, rgba(255,255,255,.24), transparent 24%),
+    radial-gradient(ellipse at 5% 26%, rgba(220,255,244,.78) 0 7%, transparent 8%),
+    radial-gradient(ellipse at 98% 42%, rgba(220,255,244,.66) 0 8%, transparent 9%),
+    linear-gradient(120deg, rgba(149,225,195,.94), rgba(15,111,91,.92) 58%, rgba(4,76,67,.96));
   content: "";
-  inset: 0;
+  border-radius: 54% 46% 58% 42% / 36% 45% 55% 64%;
+  box-shadow: 0 24px 54px rgba(2,74,61,.26);
+  height: 390px;
+  left: -86px;
+  opacity: .72;
   pointer-events: none;
   position: fixed;
-  z-index: -1;
+  top: 72px;
+  transform: rotate(138deg);
+  width: 270px;
+  z-index: 0;
+}
+
+body::after {
+  background:
+    radial-gradient(ellipse at 36% 36%, rgba(255,255,255,.22), transparent 24%),
+    radial-gradient(ellipse at 6% 38%, rgba(220,255,244,.72) 0 8%, transparent 9%),
+    radial-gradient(ellipse at 98% 58%, rgba(220,255,244,.54) 0 8%, transparent 9%),
+    linear-gradient(120deg, rgba(149,225,195,.92), rgba(15,111,91,.9) 58%, rgba(4,76,67,.96));
+  border-radius: 52% 48% 58% 42% / 36% 45% 55% 64%;
+  bottom: 24px;
+  box-shadow: 0 24px 54px rgba(2,74,61,.22);
+  content: "";
+  height: 410px;
+  opacity: .62;
+  pointer-events: none;
+  position: fixed;
+  right: -82px;
+  transform: rotate(-58deg);
+  width: 300px;
+  z-index: 0;
 }
 
 button,
@@ -94,6 +130,8 @@ button {
 
 main {
   min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------- Top bar ---------- */
