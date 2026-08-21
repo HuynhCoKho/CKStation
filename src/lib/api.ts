@@ -9,14 +9,6 @@ const apiUrl = (rawApiUrl.charCodeAt(0) === byteOrderMark ? rawApiUrl.slice(1) :
 
 type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
-export type DailyNews = {
-  title: string;
-  updatedAt: string;
-  isToday: boolean;
-  html: string;
-  docUrl: string;
-};
-
 function adminToken() {
   return sessionStorage.getItem("ck_admin_token") || localStorage.getItem("ck_admin_token") || "";
 }
@@ -38,7 +30,6 @@ async function request<T>(action: string, payload: Record<string, unknown> = {},
 
 export const api = {
   loadData: (admin = false) => request<AppData>("loadData", {}, admin),
-  getDailyNews: () => request<DailyNews>("getDailyNews", {}),
   verifyAdmin: (token: string) => request<boolean>("verifyAdmin", {}, true, token),
   createOrder: (order: Pick<Order, "tableNumber" | "customerName" | "items">) =>
     request<Order>("createOrder", { order }),
@@ -60,14 +51,6 @@ export const api = {
 function mockRequest(action: string, payload: Record<string, unknown>) {
   const data = JSON.parse(JSON.stringify(mockData)) as AppData;
   if (action === "loadData") return data;
-  if (action === "getDailyNews")
-    return {
-      title: "Bản tin mẫu (chế độ xem thử)",
-      updatedAt: new Date().toISOString(),
-      isToday: true,
-      html: "<p>Đây là nội dung bản tin mẫu hiển thị khi chưa kết nối Apps Script thật.</p>",
-      docUrl: "",
-    } as DailyNews;
   if (action === "verifyAdmin") return Boolean(adminToken());
   if (action === "createOrder") return { id: crypto.randomUUID(), ...(payload.order as object) };
   if (action === "saveMenuItem") return { id: crypto.randomUUID(), active: true, ...(payload.item as object) };

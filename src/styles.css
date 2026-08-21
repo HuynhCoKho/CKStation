@@ -1458,7 +1458,123 @@ textarea {
   min-width: 0;
 }
 
-.news-source-link,
+.news-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  justify-content: flex-end;
+}
+
+.news-refresh {
+  align-items: center;
+  background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  color: var(--mint-700);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  padding: 6px 12px;
+}
+
+.news-refresh:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/* Nội dung bản tin do scripts/publish-news.mjs sinh ra, nên chỉ cần định kiểu
+   cho các thẻ HTML cơ bản thay vì đặt class cho từng phần tử. */
+.news-body {
+  color: var(--ink);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.news-body > * + * {
+  margin-top: 12px;
+}
+
+.news-body h1 {
+  font-size: clamp(19px, 2.6vw, 24px);
+  text-shadow: none;
+}
+
+.news-body h2 {
+  color: var(--mint-800);
+  font-size: 17px;
+}
+
+.news-body h3 {
+  color: var(--mint-700);
+  font-size: 15px;
+}
+
+.news-body h1,
+.news-body h2,
+.news-body h3 {
+  margin-top: 22px;
+}
+
+.news-body p,
+.news-body li {
+  font-size: 14px;
+}
+
+.news-body ul,
+.news-body ol {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.news-body a {
+  color: var(--mint-700);
+  text-underline-offset: 3px;
+}
+
+.news-body hr {
+  border: none;
+  border-top: 1px solid var(--card-line);
+  margin: 18px 0;
+}
+
+.news-body em {
+  color: var(--ink-soft);
+}
+
+.news-body blockquote {
+  border-left: 3px solid var(--mint-300);
+  color: var(--ink-soft);
+  padding-left: 12px;
+}
+
+/* Bảng số liệu rộng hơn cột tin thì tự cuộn ngang, không đẩy giãn cả trang. */
+.news-table-wrap {
+  overflow-x: auto;
+}
+
+.news-body table {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 100%;
+}
+
+.news-body th,
+.news-body td {
+  border: 1px solid var(--card-line);
+  padding: 7px 10px;
+  vertical-align: top;
+}
+
+.news-body th {
+  background: var(--mint-100);
+  color: var(--mint-800);
+  white-space: nowrap;
+}
+
 .chart-source-link {
   color: var(--mint-700);
   font-size: 13px;

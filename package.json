@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc && vite build && node scripts/create-menu-page.mjs",
+    "publish-news": "node scripts/publish-news.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

@@ -10,6 +10,29 @@
 - Quản lý chi phí: ghi chi phí hằng ngày.
 - Thống kê ngày: doanh thu, chi phí, lợi nhuận, số đơn đã thanh toán.
 - Bảo vệ thao tác quản lý bằng admin token qua Google Apps Script.
+- Trang chủ: bản tin tài chính - ngân hàng hằng ngày, biểu đồ giá vàng SJC và tỷ giá trung tâm.
+
+## Bản tin hằng ngày
+
+Bản tin nằm thẳng trong repo và được GitHub Pages phục vụ cùng origin với trang,
+không qua Google Drive cũng không qua Apps Script:
+
+```
+news/yyyy-mm-dd.md  →  npm run publish-news  →  public/news/latest.json  →  git push  →  Pages tự deploy
+```
+
+Mỗi sáng, sau khi Claude tổng hợp xong bản tin:
+
+```bash
+npm run publish-news news/2026-08-21.md
+```
+
+Script đổi Markdown sang HTML (giữ tiêu đề, bảng số liệu, danh sách, liên kết),
+ghi `public/news/latest.json` cho trang chủ và lưu một bản trong
+`public/news/archive/` để tra lại. Commit và push là bản tin lên trang.
+
+Nút **Tải lại** ở khối tin tức nạp lại `latest.json` kèm tham số chống cache, dùng
+khi vừa đẩy bản tin mới mà không muốn tải lại cả trang.
 
 ## Chạy local
 

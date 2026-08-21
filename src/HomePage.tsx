@@ -1,7 +1,6 @@
-import { Coins, Landmark, Newspaper } from "lucide-react";
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "./lib/api";
-import { formatDateVN } from "./lib/money";
+import { Coins, Landmark, Newspaper, RefreshCw } from "lucide-react";
+import { ReactNode, useEffect, useState } from "react";
+import { formatDateVN, todayKey } from "./lib/money";
 
 // Google Sheet công khai chứa lịch sử giá vàng SJC (sheet "SJC") và tỷ giá
 // trung tâm (sheet "Tygiatrungtam"). Lấy dữ liệu trực tiếp từ trình duyệt
@@ -258,69 +257,53 @@ function ChartPanel({
   );
 }
 
-function NewsDocFrame({ html }: { html: string }) {
-  const frameRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(320);
+// Bản tin hằng ngày nằm thẳng trong repo (public/news/latest.json) và được
+// GitHub Pages phục vụ cùng origin với trang, nên chỉ cần một lần fetch: không
+// qua Google Drive, không qua Apps Script, người xem không phải đăng nhập.
+const newsUrl = `${import.meta.env.BASE_URL}news/latest.json`;
 
-  const document_ = useMemo(
-    () => `<!doctype html><html><head><meta charset="utf-8" /><base target="_blank" />
-      <style>
-        body{margin:0;padding:2px 4px 10px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#072b21;line-height:1.65;word-break:break-word;}
-        img{max-width:100%;height:auto;}
-        table{border-collapse:collapse;max-width:100%;}
-        td,th{border:1px solid #bfe6d5;padding:6px 10px;vertical-align:top;}
-        a{color:#0a7f5c;}
-        h1,h2,h3{color:#076046;}
-      </style>
-      </head><body>${html}</body></html>`,
-    [html],
-  );
+type DailyNews = {
+  date: string;
+  title: string;
+  publishedAt: string;
+  html: string;
+};
 
-  function handleLoad() {
-    const win = frameRef.current?.contentWindow;
-    if (!win) return;
-    const measure = () => setHeight((win.document.body?.scrollHeight || 320) + 24);
-    measure();
-    window.setTimeout(measure, 300);
+async function fetchDailyNews(): Promise<DailyNews> {
+  // Kèm tham số thời gian để trình duyệt và CDN của GitHub Pages không trả lại
+  // bản tin cũ còn trong cache ngay sau khi bản mới vừa được đẩy lên.
+  const response = await fetch(`${newsUrl}?t=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(
+      response.status === 404
+        ? "Chưa có bản tin nào được đăng lên trang."
+        : `Không tải được bản tin (mã lỗi ${response.status}).`,
+    );
   }
-
-  return (
-    <iframe
-      ref={frameRef}
-      title="Nội dung bản tin"
-      srcDoc={document_}
-      onLoad={handleLoad}
-      sandbox="allow-same-origin allow-popups"
-      style={{ width: "100%", height, border: "none", display: "block" }}
-    />
-  );
+  const data = (await response.json()) as DailyNews;
+  if (!data || !data.html) throw new Error("Bản tin tải về không có nội dung.");
+  return data;
 }
 
 function DailyNewsPanel() {
-  const [news, setNews] = useState<Awaited<ReturnType<typeof api.getDailyNews>> | null>(null);
+  const [news, setNews] = useState<DailyNews | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    api
-      .getDailyNews()
+  function load() {
+    setLoading(true);
+    fetchDailyNews()
       .then((data) => {
-        if (!active) return;
         setNews(data);
         setError("");
       })
-      .catch((err) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Không tải được bản tin.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+      .catch((err) => setError(err instanceof Error ? err.message : "Không tải được bản tin."))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  const isToday = news ? news.date === todayKey() : false;
 
   return (
     <div className="order-pane news-panel">
@@ -328,24 +311,21 @@ function DailyNewsPanel() {
         <h2>
           <Newspaper size={20} /> Tin tức tổng hợp hôm nay
         </h2>
-        {news && <p>{news.isToday ? "Cập nhật hôm nay" : `Bản tin gần nhất · ${formatDateVN(news.updatedAt)}`}</p>}
+        <div className="news-meta">
+          {news && <p>{isToday ? "Cập nhật hôm nay" : `Bản tin gần nhất · ${formatDateVN(news.date)}`}</p>}
+          <button type="button" className="news-refresh" onClick={load} disabled={loading}>
+            <RefreshCw size={15} /> {loading ? "Đang tải" : "Tải lại"}
+          </button>
+        </div>
       </div>
-      {loading && <p className="loading">Đang tải bản tin...</p>}
+      {loading && !news && <p className="loading">Đang tải bản tin...</p>}
       {error && <p className="alert inline-alert">{error}</p>}
-      {news && (
-        <>
-          <NewsDocFrame html={news.html} />
-          {news.docUrl && (
-            <a className="news-source-link" href={news.docUrl} target="_blank" rel="noopener noreferrer">
-              Mở bản gốc trên Google Docs
-            </a>
-          )}
-        </>
-      )}
+      {/* HTML do scripts/publish-news.mjs sinh ra từ Markdown trong repo, mọi ký
+          tự của nội dung gốc đã được escape nên không có đường chèn mã lạ. */}
+      {news && <div className="news-body" dangerouslySetInnerHTML={{ __html: news.html }} />}
     </div>
   );
 }
-
 const goldFormatter = (value: number) => `${value.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tr`;
 const rateFormatter = (value: number) => value.toLocaleString("vi-VN", { maximumFractionDigits: 0 });
 
