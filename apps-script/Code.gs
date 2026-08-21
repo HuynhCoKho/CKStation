@@ -19,6 +19,11 @@ const HEADERS = {
 const READY_CACHE_KEY = "ck_sheets_ready";
 const READY_CACHE_SECONDS = 21600;
 
+// Thư mục Drive chứa bản tin tài chính - ngân hàng hằng ngày, mỗi ngày một
+// Google Doc được đặt tên "yyyy-MM-dd - Ban tin tai chinh - ngan hang".
+const NEWS_FOLDER_ID = "1xI1dSHl27BPUC1bE9gD4fEJtM9AgxZLS";
+const NEWS_CACHE_SECONDS = 1800;
+
 function setup() {
   const ss = getSpreadsheet_();
   Object.keys(HEADERS).forEach((name) => ensureSheet_(ss, name, HEADERS[name]));
@@ -79,6 +84,7 @@ function doPost(e) {
 function route_(action, payload, isAdmin) {
   if (action === "verifyAdmin") return true;
   if (action === "loadData") return loadData_(isAdmin);
+  if (action === "getDailyNews") return getDailyNews_();
   if (action === "createOrder") return createOrder_(payload.order);
   if (action === "saveMenuItem") return saveMenuItem_(payload.item);
   if (action === "deleteMenuItem") return deleteMenuItem_(payload.id);
@@ -657,4 +663,83 @@ function output_(e, payload) {
   return ContentService
     .createTextOutput(callback + "(" + JSON.stringify(payload) + ");")
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+// ---------- Bản tin tài chính - ngân hàng (Trang chủ) ----------
+//
+// Mỗi ngày skill "ban-tin-tai-chinh-ngan-hang" lưu một Google Doc mới vào
+// NEWS_FOLDER_ID với tên bắt đầu bằng "yyyy-MM-dd". Hàm này tìm đúng bản tin
+// của hôm nay (theo giờ của Apps Script project), nếu chưa có thì lấy bản tin
+// được cập nhật gần nhất, rồi xuất nội dung sang HTML để hiển thị trực tiếp
+// trên Trang chủ (không cần người xem đăng nhập Google).
+function getDailyNews_() {
+  const folder = DriveApp.getFolderById(NEWS_FOLDER_ID);
+  const iterator = folder.getFilesByType(MimeType.GOOGLE_DOCS);
+  const files = [];
+  while (iterator.hasNext()) files.push(iterator.next());
+  if (!files.length) throw new Error("Chưa có bản tin nào trong thư mục Drive.");
+
+  const todayKey = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  let chosen = files.find(function (file) {
+    return file.getName().indexOf(todayKey) === 0;
+  });
+  const isToday = Boolean(chosen);
+  if (!chosen) {
+    files.sort(function (a, b) {
+      return b.getLastUpdated().getTime() - a.getLastUpdated().getTime();
+    });
+    chosen = files[0];
+  }
+
+  return {
+    title: chosen.getName(),
+    updatedAt: chosen.getLastUpdated().toISOString(),
+    isToday: isToday,
+    html: getDocHtmlCached_(chosen),
+    docUrl: "https://docs.google.com/document/d/" + chosen.getId() + "/edit",
+  };
+}
+
+function getDocHtmlCached_(file) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "ck_news_html_" + file.getId() + "_" + file.getLastUpdated().getTime();
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  const html = exportDocAsHtml_(file.getId());
+  try {
+    // Bản tin dài có thể vượt giới hạn 100KB của CacheService, bỏ qua cache
+    // trong trường hợp đó thay vì làm hỏng cả request.
+    cache.put(cacheKey, html, NEWS_CACHE_SECONDS);
+  } catch (error) {
+    // ignore, chỉ mất tác dụng cache
+  }
+  return html;
+}
+
+function exportDocAsHtml_(fileId) {
+  const url = "https://www.googleapis.com/drive/v3/files/" + fileId + "/export?mimeType=" + encodeURIComponent("text/html");
+  const response = UrlFetchApp.fetch(url, {
+    headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true,
+  });
+  if (response.getResponseCode() !== 200) {
+    throw new Error("Không xuất được nội dung bản tin (mã lỗi " + response.getResponseCode() + ").");
+  }
+  return sanitizeDocHtml_(response.getContentText());
+}
+
+// Google trả về một trang HTML đầy đủ (kèm <style> định dạng đậm/nghiêng,
+// bảng...). Giữ lại phần <style> + nội dung <body>, bỏ <script> và các
+// thuộc tính on*, đồng thời bỏ thẻ <img> vì bản export đơn (không kèm zip)
+// không có ảnh hợp lệ.
+function sanitizeDocHtml_(rawHtml) {
+  const styleMatch = rawHtml.match(/<style[^>]*>[\s\S]*?<\/style>/i);
+  const style = styleMatch ? styleMatch[0] : "";
+  const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  let body = bodyMatch ? bodyMatch[1] : rawHtml;
+  body = body.replace(/<script[\s\S]*?<\/script>/gi, "");
+  body = body.replace(/\son\w+="[^"]*"/gi, "").replace(/\son\w+='[^']*'/gi, "");
+  body = body.replace(/<img[^>]*>/gi, "");
+  return (style + body).trim();
 }
