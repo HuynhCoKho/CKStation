@@ -104,6 +104,12 @@ async function fetchSheetSeries(sheetName: string): Promise<SheetSeries> {
   };
 }
 
+type SeriesColors = string[] | ((name: string, index: number) => string);
+
+function resolveSeriesColor(colors: SeriesColors, name: string, index: number): string {
+  return typeof colors === "function" ? colors(name, index) : colors[index % colors.length];
+}
+
 function LineChart({
   labels,
   series,
@@ -112,7 +118,7 @@ function LineChart({
 }: {
   labels: string[];
   series: { name: string; values: (number | null)[] }[];
-  colors: string[];
+  colors: SeriesColors;
   formatValue: (value: number) => string;
 }) {
   const width = 560;
@@ -157,7 +163,7 @@ function LineChart({
           ) : null,
         )}
         {series.map((item, seriesIndex) => {
-          const color = colors[seriesIndex % colors.length];
+          const color = resolveSeriesColor(colors, item.name, seriesIndex);
           const points = item.values
             .map((value, i) => (value == null ? null : `${x(i)},${y(value)}`))
             .filter((point): point is string => Boolean(point))
@@ -179,7 +185,7 @@ function LineChart({
       <div className="chart-legend">
         {series.map((item, seriesIndex) => (
           <span className="chart-legend-item" key={item.name}>
-            <i style={{ background: colors[seriesIndex % colors.length] }} />
+            <i style={{ background: resolveSeriesColor(colors, item.name, seriesIndex) }} />
             {item.name}
           </span>
         ))}
@@ -199,7 +205,7 @@ function ChartPanel({
   title: string;
   icon: ReactNode;
   sheetName: string;
-  colors: string[];
+  colors: SeriesColors;
   unitLabel: string;
   formatValue: (value: number) => string;
 }) {
@@ -343,6 +349,28 @@ function DailyNewsPanel() {
 const goldFormatter = (value: number) => `${value.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tr`;
 const rateFormatter = (value: number) => value.toLocaleString("vi-VN", { maximumFractionDigits: 0 });
 
+// Bỏ dấu tiếng Việt để nhận diện cột "tỷ giá tự do" dù cột được đặt tên
+// khác chút ít (có/không dấu, viết hoa/thường...).
+function stripDiacritics(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase();
+}
+
+const RATE_FALLBACK_COLORS = ["#0ea376", "#8fc9b2", "#d1471f", "#f08a5f", "#076046"];
+
+// Cột "tỷ giá tự do" (thị trường tự do) dễ bị nhầm với các cột màu xanh lá
+// khác, nên tô riêng bằng 2 sắc xanh dương để tách biệt hẳn.
+function rateSeriesColor(name: string, fallbackIndex: number): string {
+  const normalized = stripDiacritics(name);
+  if (normalized.includes("tu do")) {
+    return normalized.includes("ban") ? "#0ea5e9" : "#2563eb";
+  }
+  return RATE_FALLBACK_COLORS[fallbackIndex % RATE_FALLBACK_COLORS.length];
+}
+
 export function HomePage() {
   return (
     <section className="home-layout">
@@ -360,7 +388,7 @@ export function HomePage() {
           title="Tỷ giá trung tâm USD/VND"
           icon={<Landmark size={20} />}
           sheetName="Tygiatrungtam"
-          colors={["#0ea376", "#8fc9b2", "#d1471f", "#f08a5f", "#076046"]}
+          colors={rateSeriesColor}
           unitLabel="Đồng / USD"
           formatValue={rateFormatter}
         />
