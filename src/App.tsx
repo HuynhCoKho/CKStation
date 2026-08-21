@@ -1,10 +1,11 @@
-import { BookOpen, ClipboardList, Coffee, LockKeyhole, Plus, ReceiptText, RefreshCw, Save, Settings, Trash2 } from "lucide-react";
+import { BookOpen, ClipboardList, Coffee, Home, LockKeyhole, Plus, ReceiptText, RefreshCw, Save, Settings, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { HomePage } from "./HomePage";
 import { api } from "./lib/api";
 import { formatDateVN, formatMoney, formatMonthVN, parseDateVN, parseMonthVN, todayKey } from "./lib/money";
 import type { AppData, Expense, LinkItem, MenuItem, Order, OrderItem, TableState } from "./types";
 
-type View = "customer" | "admin";
+type View = "home" | "customer" | "admin";
 const cacheKey = "ckstation_cached_data_v2";
 const adminTokenKey = "ck_admin_token";
 
@@ -163,7 +164,7 @@ export function App() {
   const normalizedPath = window.location.pathname.toLowerCase().replace(/\/$/, "");
   const isPublicMenu = normalizedPath.endsWith("/menu") || normalizedPath.endsWith("/menu.html");
   const adminModeRequested = new URLSearchParams(window.location.search).has("admin");
-  const [view, setView] = useState<View>(isPublicMenu ? "customer" : "admin");
+  const [view, setView] = useState<View>(isPublicMenu ? "customer" : "home");
   const [data, setData] = useState<AppData | null>(() => readCachedData());
   const [loading, setLoading] = useState(() => !readCachedData());
   const [error, setError] = useState("");
@@ -241,6 +242,9 @@ export function App() {
         </div>
         {!isPublicMenu && (
           <nav className="tabs">
+            <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}>
+              <Home size={18} /> Trang chủ
+            </button>
             <button className={view === "customer" ? "active" : ""} onClick={() => setView("customer")}>
               <Coffee size={18} /> Khách hàng
             </button>
@@ -256,6 +260,7 @@ export function App() {
         )}
       </header>
 
+      {!isPublicMenu && view === "home" && <HomePage />}
       {error && <p className="alert">{error}</p>}
       {loading && <p className="loading">Đang tải dữ liệu...</p>}
       {data && (isPublicMenu || view === "customer") && <CustomerPage data={data} onChanged={refresh} />}
