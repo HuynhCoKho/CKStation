@@ -7,7 +7,12 @@
 //
 //   node scripts/publish-news.mjs news/2026-08-21.md
 //   node scripts/publish-news.mjs news/2026-08-21.md --title "Bản tin sáng"
+//   node scripts/publish-news.mjs --doc "https://docs.google.com/document/d/<id>/edit"
 //   node scripts/publish-news.mjs --date 2026-08-21 < ban-tin.md
+//
+// Dạng --doc dành cho lúc bản tin được soạn ở nơi khác (Claude web) và nằm
+// trong một Google Doc đã chia sẻ theo đường liên kết: script tải bản xuất
+// Markdown về, lưu vào news/ rồi xuất bản như bình thường.
 //
 // Ngày lấy theo thứ tự: --date, tên file (yyyy-mm-dd), rồi tới hôm nay giờ VN.
 
@@ -23,11 +28,12 @@ const maxArchive = 60;
 const defaultTitle = "Bản tin tài chính - ngân hàng";
 
 function parseArgs(argv) {
-  const args = { file: "", date: "", title: "" };
+  const args = { file: "", date: "", title: "", doc: "" };
   for (let i = 0; i < argv.length; i += 1) {
     const item = argv[i];
     if (item === "--date") args.date = argv[++i] || "";
     else if (item === "--title") args.title = argv[++i] || "";
+    else if (item === "--doc") args.doc = argv[++i] || "";
     else if (!item.startsWith("--") && !args.file) args.file = item;
   }
   return args;
@@ -38,10 +44,29 @@ function todayInVN() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
 }
 
-function readInput(file) {
-  if (file) return readFileSync(resolve(repoRoot, file), "utf8");
+// Khi bản tin được soạn ở nơi khác (Claude web) và nằm trong một Google Doc,
+// tải thẳng bản xuất Markdown về rồi lưu lại vào news/ như mọi bản tin khác.
+// Doc phải đang ở chế độ "ai có đường liên kết cũng xem được".
+async function readDoc(docRef) {
+  const match = docRef.match(/\/document\/d\/([a-zA-Z0-9_-]+)/) || docRef.match(/^([a-zA-Z0-9_-]{20,})$/);
+  if (!match) throw new Error(`Không đọc được ID tài liệu từ: ${docRef}`);
+
+  const response = await fetch(`https://docs.google.com/document/d/${match[1]}/export?format=md`);
+  if (!response.ok) {
+    throw new Error(
+      response.status === 401 || response.status === 403 || response.status === 404
+        ? "Không mở được Google Doc. Kiểm tra tài liệu đã chia sẻ ở chế độ 'Bất kỳ ai có đường liên kết' chưa."
+        : `Không tải được Google Doc (mã lỗi ${response.status}).`,
+    );
+  }
+  return response.text();
+}
+
+async function readInput(args) {
+  if (args.doc) return readDoc(args.doc);
+  if (args.file) return readFileSync(resolve(repoRoot, args.file), "utf8");
   const stdin = readFileSync(0, "utf8");
-  if (!stdin.trim()) throw new Error("Không có nội dung bản tin. Truyền đường dẫn file hoặc đưa nội dung qua stdin.");
+  if (!stdin.trim()) throw new Error("Không có nội dung bản tin. Truyền đường dẫn file, --doc <link>, hoặc đưa nội dung qua stdin.");
   return stdin;
 }
 
@@ -244,14 +269,21 @@ function extractTitle(markdown) {
   return match[1].replace(/\s+#+\s*$/, "").replace(/\*\*/g, "").trim();
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const source = readInput(args.file);
+  const source = await readInput(args);
   const isHtml = /\.html?$/i.test(args.file);
 
   const fromName = args.file ? basename(args.file).match(/\d{4}-\d{2}-\d{2}/) : null;
   const date = args.date || (fromName ? fromName[0] : todayInVN());
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`Ngày không hợp lệ: ${date}. Cần dạng yyyy-mm-dd.`);
+
+  // Bản tin lấy từ Google Doc chưa có bản gốc trong repo, lưu lại để lần sau
+  // dựng lại được HTML mà không cần mở Drive.
+  if (args.doc) {
+    mkdirSync(join(repoRoot, "news"), { recursive: true });
+    writeFileSync(join(repoRoot, "news", `${date}.md`), source, "utf8");
+  }
 
   const html = isHtml ? sanitizeHtml(source) : mdToHtml(source);
   if (!html.trim()) throw new Error("Nội dung bản tin rỗng sau khi chuyển đổi.");
@@ -285,4 +317,7 @@ if (!existsSync(join(repoRoot, "package.json"))) {
   throw new Error("Chạy script từ trong repo CKStation.");
 }
 
-main();
+main().catch((error) => {
+  console.error(`Lỗi: ${error.message}`);
+  process.exitCode = 1;
+});

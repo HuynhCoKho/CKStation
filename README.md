@@ -27,12 +27,25 @@ Mỗi sáng, sau khi Claude tổng hợp xong bản tin:
 npm run publish-news news/2026-08-21.md
 ```
 
+Nếu bản tin được soạn ở nơi khác (Claude web) và đang nằm trong một Google Doc
+đã chia sẻ theo đường liên kết, đưa thẳng link vào - script tự tải bản xuất
+Markdown về, lưu vào `news/` rồi xuất bản:
+
+```bash
+npm run publish-news -- --doc "https://docs.google.com/document/d/<id>/edit"
+```
+
 Script đổi Markdown sang HTML (giữ tiêu đề, bảng số liệu, danh sách, liên kết),
 ghi `public/news/latest.json` cho trang chủ và lưu một bản trong
-`public/news/archive/` để tra lại. Commit và push là bản tin lên trang.
+`public/news/archive/` để tra lại. Commit và push là bản tin lên trang:
 
-Nút **Tải lại** ở khối tin tức nạp lại `latest.json` kèm tham số chống cache, dùng
-khi vừa đẩy bản tin mới mà không muốn tải lại cả trang.
+```bash
+git add news public && git commit -m "Bản tin ngày 21/08/2026" && git push
+```
+
+Nút **Tải lại** ở khối tin tức chỉ nạp lại `latest.json` kèm tham số chống cache -
+dùng sau khi đã push xong để trang hiện bản tin mới mà không phải tải lại cả
+trang. Nút này không tự tổng hợp bản tin.
 
 ## Chạy local
 
