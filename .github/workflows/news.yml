@@ -1,0 +1,86 @@
+# Nhặt bản tin mới nhất từ thư mục Drive công khai rồi đăng lên trang.
+#
+# Claude trên claude.ai web soạn bản tin và lưu thành Google Doc mới trong
+# thư mục NEWS_FOLDER_ID với tên bắt đầu bằng ngày (yyyy-mm-dd). Workflow này
+# chạy vài lần mỗi sáng, thấy bản tin có ngày mới hơn bản trang đang hiển thị
+# thì tải về, chuyển sang HTML, commit và deploy luôn.
+#
+# Workflow tự deploy thay vì để deploy.yml chạy tiếp, vì push bằng
+# GITHUB_TOKEN không kích hoạt workflow khác.
+
+name: Bản tin
+
+on:
+  schedule:
+    # Giờ UTC. 01:00-04:45 UTC = 08:00-11:45 giờ Việt Nam, 15 phút một lần.
+    - cron: "*/15 1-4 * * *"
+    # Phòng khi bản tin được soạn muộn: mỗi giờ một lần tới 21:00 giờ VN.
+    - cron: "0 5-14 * * *"
+  workflow_dispatch:
+
+env:
+  NEWS_FOLDER_ID: 1xI1dSHl27BPUC1bE9gD4fEJtM9AgxZLS
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.news.outputs.published }}
+      date: ${{ steps.news.outputs.date }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Tìm và xuất bản bản tin mới nhất
+        id: news
+        run: node scripts/publish-news.mjs --folder "$NEWS_FOLDER_ID" --only-if-new
+
+      - name: Commit bản tin
+        if: steps.news.outputs.published == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add news public
+          git diff --staged --quiet || git commit -m "Bản tin ngày ${{ steps.news.outputs.date }}"
+          git push
+
+      - name: Build
+        if: steps.news.outputs.published == 'true'
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      - name: Configure GitHub Pages
+        if: steps.news.outputs.published == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: steps.news.outputs.published == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: publish
+    if: needs.publish.outputs.published == 'true'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

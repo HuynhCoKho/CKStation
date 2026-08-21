@@ -1485,6 +1485,40 @@ textarea {
   opacity: 0.6;
 }
 
+.news-compose {
+  background: linear-gradient(180deg, var(--mint-500), var(--mint-600));
+  border-color: var(--mint-600);
+  color: #ffffff;
+}
+
+.news-hint {
+  background: var(--mint-50);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.news-hint summary {
+  color: var(--mint-700);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.news-hint pre {
+  background: var(--card-top);
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  font-size: 12px;
+  margin: 8px 0 0;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Nội dung bản tin do scripts/publish-news.mjs sinh ra, nên chỉ cần định kiểu
    cho các thẻ HTML cơ bản thay vì đặt class cho từng phần tử. */
 .news-body {

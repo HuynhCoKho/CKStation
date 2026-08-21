@@ -16,7 +16,7 @@
 //
 // Ngày lấy theo thứ tự: --date, tên file (yyyy-mm-dd), rồi tới hôm nay giờ VN.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,15 +28,64 @@ const maxArchive = 60;
 const defaultTitle = "Bản tin tài chính - ngân hàng";
 
 function parseArgs(argv) {
-  const args = { file: "", date: "", title: "", doc: "" };
+  const args = { file: "", date: "", title: "", doc: "", folder: "", onlyIfNew: false };
   for (let i = 0; i < argv.length; i += 1) {
     const item = argv[i];
     if (item === "--date") args.date = argv[++i] || "";
     else if (item === "--title") args.title = argv[++i] || "";
     else if (item === "--doc") args.doc = argv[++i] || "";
+    else if (item === "--folder") args.folder = argv[++i] || "";
+    else if (item === "--only-if-new") args.onlyIfNew = true;
     else if (!item.startsWith("--") && !args.file) args.file = item;
   }
   return args;
+}
+
+// Thư mục Drive đang chia sẻ theo đường liên kết nên đọc được danh sách file mà
+// không cần đăng nhập. Bản tin mới nhất là file có ngày trong tên lớn nhất, các
+// file đặt tên khác (tài liệu nháp, không tiêu đề) bị bỏ qua.
+async function findLatestDocInFolder(folderId) {
+  const response = await fetch(`https://drive.google.com/embeddedfolderview?id=${folderId}#list`);
+  if (!response.ok) {
+    throw new Error(
+      `Không đọc được thư mục Drive (mã lỗi ${response.status}). Kiểm tra thư mục đã chia sẻ ở chế độ 'Bất kỳ ai có đường liên kết' chưa.`,
+    );
+  }
+
+  const html = await response.text();
+  const entries = [];
+  const pattern = /id="entry-([a-zA-Z0-9_-]+)"[\s\S]*?flip-entry-title[^>]*>([^<]*)</g;
+  let match;
+  while ((match = pattern.exec(html))) {
+    const title = match[2].trim();
+    const date = (title.match(/\d{4}-\d{2}-\d{2}/) || [""])[0];
+    if (date) entries.push({ id: match[1], title, date });
+  }
+
+  if (!entries.length) {
+    throw new Error("Thư mục Drive chưa có bản tin nào đặt tên bắt đầu bằng ngày dạng yyyy-mm-dd.");
+  }
+
+  entries.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
+  return entries[0];
+}
+
+function currentPublishedDate() {
+  const file = join(outDir, "latest.json");
+  if (!existsSync(file)) return "";
+  try {
+    return JSON.parse(readFileSync(file, "utf8")).date || "";
+  } catch {
+    return "";
+  }
+}
+
+// GitHub Actions đọc kết quả qua $GITHUB_OUTPUT để biết có cần commit và build
+// lại hay không; chạy ngoài Actions thì bỏ qua.
+function reportOutput(published, date) {
+  const file = process.env.GITHUB_OUTPUT;
+  if (!file) return;
+  appendFileSync(file, `published=${published}\ndate=${date}\n`, "utf8");
 }
 
 function todayInVN() {
@@ -271,16 +320,34 @@ function extractTitle(markdown) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const source = await readInput(args);
+
+  let docRef = args.doc;
+  let dateHint = args.date;
+
+  if (args.folder) {
+    const latest = await findLatestDocInFolder(args.folder);
+    console.log(`Bản tin mới nhất trong thư mục Drive: ${latest.title}`);
+    docRef = latest.id;
+    dateHint = dateHint || latest.date;
+  }
+
+  // Cho phép chạy định kỳ mà không xuất bản lại đúng bản tin trang đang có.
+  if (args.onlyIfNew && dateHint && currentPublishedDate() === dateHint) {
+    console.log(`Trang đã có bản tin ngày ${dateHint}, không cần xuất bản lại.`);
+    reportOutput(false, dateHint);
+    return;
+  }
+
+  const source = await readInput({ ...args, doc: docRef });
   const isHtml = /\.html?$/i.test(args.file);
 
   const fromName = args.file ? basename(args.file).match(/\d{4}-\d{2}-\d{2}/) : null;
-  const date = args.date || (fromName ? fromName[0] : todayInVN());
+  const date = dateHint || (fromName ? fromName[0] : todayInVN());
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`Ngày không hợp lệ: ${date}. Cần dạng yyyy-mm-dd.`);
 
   // Bản tin lấy từ Google Doc chưa có bản gốc trong repo, lưu lại để lần sau
   // dựng lại được HTML mà không cần mở Drive.
-  if (args.doc) {
+  if (docRef) {
     mkdirSync(join(repoRoot, "news"), { recursive: true });
     writeFileSync(join(repoRoot, "news", `${date}.md`), source, "utf8");
   }
@@ -311,6 +378,7 @@ async function main() {
   console.log(`Đã xuất bản bản tin ${date} - "${title}" (${sizeKb} KB).`);
   console.log(`  ${join("public", "news", "latest.json")}`);
   console.log(`  ${join("public", "news", "archive", `${date}.json`)}`);
+  reportOutput(true, date);
 }
 
 if (!existsSync(join(repoRoot, "package.json"))) {

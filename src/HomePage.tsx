@@ -1,4 +1,4 @@
-import { Coins, Landmark, Newspaper, RefreshCw } from "lucide-react";
+import { Coins, Landmark, Newspaper, RefreshCw, Sparkles } from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
 import { formatDateVN, todayKey } from "./lib/money";
 
@@ -285,6 +285,34 @@ async function fetchDailyNews(): Promise<DailyNews> {
   return data;
 }
 
+// Thư mục Drive dùng làm hộp thư giữa claude.ai và trang: Claude lưu bản tin
+// thành Google Doc đặt tên theo ngày, GitHub Actions nhặt bản mới nhất về rồi
+// tự đăng lên trang.
+const NEWS_FOLDER_ID = "1xI1dSHl27BPUC1bE9gD4fEJtM9AgxZLS";
+
+// Nút soạn bản tin chỉ dành cho chủ trang, khách vào quán không cần thấy. Mở
+// trang kèm ?admin=1 (nên lưu thành bookmark ở máy cơ quan) hoặc đã đăng nhập
+// quản lý là nút hiện ra.
+function canComposeNews() {
+  if (typeof window === "undefined") return false;
+  if (new URLSearchParams(window.location.search).get("admin") === "1") return true;
+  return Boolean(sessionStorage.getItem("ck_admin_token") || localStorage.getItem("ck_admin_token"));
+}
+
+function composeNewsPrompt() {
+  const date = todayKey();
+  return [
+    `Dùng skill ban-tin-tai-chinh-ngan-hang để tổng hợp bản tin tài chính - ngân hàng cho ngày ${formatDateVN(date)}.`,
+    "",
+    "Soạn xong thì lưu thành một Google Doc MỚI trong thư mục Drive này:",
+    `https://drive.google.com/drive/folders/${NEWS_FOLDER_ID}`,
+    "",
+    `Đặt tên tài liệu đúng dạng (không dấu): ${date} - Ban tin tai chinh - ngan hang`,
+    "",
+    "Trang CKStation tự nhặt bản tin mới nhất trong thư mục này theo ngày ghi trong tên file, nên tên file phải đúng dạng trên thì bản tin mới lên được trang.",
+  ].join("\n");
+}
+
 function DailyNewsPanel() {
   const [news, setNews] = useState<DailyNews | null>(null);
   const [error, setError] = useState("");
@@ -304,6 +332,21 @@ function DailyNewsPanel() {
   useEffect(load, []);
 
   const isToday = news ? news.date === todayKey() : false;
+  const [canCompose] = useState(canComposeNews);
+  const [prompt, setPrompt] = useState("");
+  const [hint, setHint] = useState("");
+
+  function openClaude() {
+    const text = composeNewsPrompt();
+    setPrompt(text);
+    // Mở tab trước rồi mới chép, vì chờ clipboard xong mới gọi window.open thì
+    // trình duyệt coi đó là popup tự động và chặn.
+    window.open(`https://claude.ai/new?q=${encodeURIComponent(text)}`, "_blank", "noopener");
+    navigator.clipboard?.writeText(text).then(
+      () => setHint("Đã mở claude.ai và chép sẵn câu lệnh. Nếu ô chat trống, dán bằng Ctrl+V rồi Enter."),
+      () => setHint("Đã mở claude.ai. Chưa chép được câu lệnh, hãy chép tay ở khung bên dưới."),
+    );
+  }
 
   return (
     <div className="order-pane news-panel">
@@ -313,11 +356,29 @@ function DailyNewsPanel() {
         </h2>
         <div className="news-meta">
           {news && <p>{isToday ? "Cập nhật hôm nay" : `Bản tin gần nhất · ${formatDateVN(news.date)}`}</p>}
+          {canCompose && (
+            <button type="button" className="news-refresh news-compose" onClick={openClaude}>
+              <Sparkles size={15} /> Tạo bản tin hôm nay
+            </button>
+          )}
           <button type="button" className="news-refresh" onClick={load} disabled={loading}>
             <RefreshCw size={15} /> {loading ? "Đang tải" : "Tải lại"}
           </button>
         </div>
       </div>
+      {hint && (
+        <div className="news-hint">
+          <p>{hint}</p>
+          <p className="muted">
+            Claude soạn xong và lưu Google Doc là trang tự cập nhật trong khoảng 15 phút. Muốn xem ngay thì bấm Tải lại
+            sau đó.
+          </p>
+          <details>
+            <summary>Xem câu lệnh</summary>
+            <pre>{prompt}</pre>
+          </details>
+        </div>
+      )}
       {loading && !news && <p className="loading">Đang tải bản tin...</p>}
       {error && <p className="alert inline-alert">{error}</p>}
       {/* HTML do scripts/publish-news.mjs sinh ra từ Markdown trong repo, mọi ký

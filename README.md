@@ -14,12 +14,32 @@
 
 ## Bản tin hằng ngày
 
-Bản tin nằm thẳng trong repo và được GitHub Pages phục vụ cùng origin với trang,
-không qua Google Drive cũng không qua Apps Script:
+Bản tin nằm thẳng trong repo và được GitHub Pages phục vụ cùng origin với trang.
+Trang chỉ đọc một file JSON tĩnh, không gọi Google Drive cũng không gọi Apps
+Script:
 
 ```
 news/yyyy-mm-dd.md  →  npm run publish-news  →  public/news/latest.json  →  git push  →  Pages tự deploy
 ```
+
+### Cách thường dùng: bấm nút trên trang
+
+Mở trang kèm `?admin=1` (nên lưu thành bookmark) thì khối tin tức hiện thêm nút
+**Tạo bản tin hôm nay**. Nút mở claude.ai kèm sẵn câu lệnh và chép câu lệnh vào
+clipboard. Claude tổng hợp bản tin rồi lưu thành Google Doc mới trong thư mục
+Drive `1xI1dSHl27BPUC1bE9gD4fEJtM9AgxZLS`, đặt tên
+`yyyy-mm-dd - Ban tin tai chinh - ngan hang`.
+
+Workflow [`.github/workflows/news.yml`](.github/workflows/news.yml) chạy 15 phút
+một lần trong buổi sáng (và mỗi giờ tới tối), đọc danh sách thư mục Drive công
+khai, thấy bản tin có ngày mới hơn bản trang đang hiển thị thì tải về, chuyển
+sang HTML, commit và deploy luôn. Không cần máy cá nhân bật, không cần cài gì.
+Muốn chạy ngay thì bấm **Run workflow** ở tab Actions.
+
+Thư mục Drive phải giữ chế độ chia sẻ *"Bất kỳ ai có đường liên kết"* thì workflow
+mới đọc được.
+
+### Cách chạy tay trên máy
 
 Mỗi sáng, sau khi Claude tổng hợp xong bản tin:
 
@@ -33,6 +53,12 @@ Markdown về, lưu vào `news/` rồi xuất bản:
 
 ```bash
 npm run publish-news -- --doc "https://docs.google.com/document/d/<id>/edit"
+```
+
+Hoặc để script tự tìm bản tin mới nhất trong thư mục Drive, đúng như workflow làm:
+
+```bash
+npm run publish-news -- --folder 1xI1dSHl27BPUC1bE9gD4fEJtM9AgxZLS --only-if-new
 ```
 
 Script đổi Markdown sang HTML (giữ tiêu đề, bảng số liệu, danh sách, liên kết),
