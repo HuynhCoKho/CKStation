@@ -12,10 +12,12 @@ name: Bản tin
 
 on:
   schedule:
-    # Giờ UTC. 01:00-04:45 UTC = 08:00-11:45 giờ Việt Nam, 15 phút một lần.
-    - cron: "*/15 1-4 * * *"
-    # Phòng khi bản tin được soạn muộn: mỗi giờ một lần tới 21:00 giờ VN.
-    - cron: "0 5-14 * * *"
+    # Giờ UTC, Việt Nam là UTC+7. Quét dày suốt buổi sáng vì bản tin có thể
+    # được soạn bất cứ lúc nào từ tờ mờ sáng: 22:00-04:45 UTC = 05:00-11:45 giờ VN.
+    - cron: "*/15 22-23 * * *"
+    - cron: "*/15 0-4 * * *"
+    # Phần còn lại trong ngày quét thưa hơn: 12:00-23:00 giờ VN.
+    - cron: "0 5-16 * * *"
   workflow_dispatch:
 
 env:

@@ -379,6 +379,14 @@ function DailyNewsPanel() {
           </details>
         </div>
       )}
+      {/* Bản tin trên trang không phải của hôm nay thì nói rõ đang chờ máy chủ
+          nhặt về, để khỏi tưởng nút Tải lại hỏng. */}
+      {news && !isToday && !hint && (
+        <p className="news-pending muted">
+          Bản tin hôm nay chưa lên trang. Nếu vừa lưu Google Doc xong, máy chủ sẽ tự nhặt về trong khoảng 15 phút - bấm
+          Tải lại sau đó.
+        </p>
+      )}
       {loading && !news && <p className="loading">Đang tải bản tin...</p>}
       {error && <p className="alert inline-alert">{error}</p>}
       {/* HTML do scripts/publish-news.mjs sinh ra từ Markdown trong repo, mọi ký

@@ -1394,6 +1394,14 @@ textarea {
   padding: 12px 14px;
 }
 
+.news-pending {
+  background: var(--mint-50);
+  border: 1px solid var(--card-line);
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+}
 .news-hint summary {
   color: var(--mint-700);
   cursor: pointer;
