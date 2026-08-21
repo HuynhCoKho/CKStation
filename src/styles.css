@@ -1437,3 +1437,98 @@ textarea {
   box-shadow: 0 24px 52px rgba(5,71,57,.16), inset 0 1px 0 rgba(255,255,255,.62) !important;
   backdrop-filter: blur(12px);
 }
+
+/* ---------- Trang chủ ---------- */
+
+.home-layout {
+  display: grid;
+  gap: 26px;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  padding: clamp(18px, 4vw, 40px);
+}
+
+.home-charts {
+  display: grid;
+  gap: 26px;
+  align-content: start;
+}
+
+.news-panel {
+  align-content: start;
+  min-width: 0;
+}
+
+.news-source-link,
+.chart-source-link {
+  color: var(--mint-700);
+  font-size: 13px;
+  font-weight: 700;
+  justify-self: start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chart-panel {
+  min-width: 0;
+}
+
+.chart-unit {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin-top: -8px;
+}
+
+.chart-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+}
+
+.chart-grid {
+  stroke: var(--mint-200);
+  stroke-width: 1;
+}
+
+.chart-axis-label {
+  fill: var(--ink-muted);
+  font-size: 10px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.chart-legend-item {
+  align-items: center;
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.chart-legend-item i {
+  border-radius: 3px;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.home-disclaimer {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-style: italic;
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
+}
