@@ -29,7 +29,7 @@
   --ink-soft: #3d6459;
   --ink-muted: #5e8175;
 
-  --page: #d6f0e6;
+  --page: #ebf8f3;
   --card-top: #ffffff;
   --card-bottom: #eefbf5;
   --card-line: #bfe6d5;
@@ -64,12 +64,12 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(90deg, rgba(187, 236, 223, .52) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(187, 236, 223, .38) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(187, 236, 223, .26) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(187, 236, 223, .19) 1px, transparent 1px),
     radial-gradient(circle at 50% 32%, rgba(255,255,255,.64), transparent 28%),
-    radial-gradient(circle at 84% 18%, rgba(132,223,191,.34), transparent 28%),
-    radial-gradient(circle at 10% 82%, rgba(70,173,126,.24), transparent 32%),
-    linear-gradient(135deg, #dcfff5 0%, #bdf0e4 52%, #e4fff6 100%);
+    radial-gradient(circle at 84% 18%, rgba(132,223,191,.17), transparent 28%),
+    radial-gradient(circle at 10% 82%, rgba(70,173,126,.12), transparent 32%),
+    linear-gradient(135deg, #edfffa 0%, #def8f2 52%, #f2fffb 100%);
   background-size: 118px 118px, 118px 118px, auto, auto, auto, auto;
 }
 
@@ -87,7 +87,7 @@ body::before {
   box-shadow: 0 24px 54px rgba(2,74,61,.26);
   height: 390px;
   left: -86px;
-  opacity: .72;
+  opacity: .36;
   pointer-events: none;
   position: fixed;
   top: 72px;
@@ -107,7 +107,7 @@ body::after {
   box-shadow: 0 24px 54px rgba(2,74,61,.22);
   content: "";
   height: 410px;
-  opacity: .62;
+  opacity: .31;
   pointer-events: none;
   position: fixed;
   right: -82px;
@@ -1323,12 +1323,12 @@ textarea {
 body {
   isolation: isolate;
   background:
-    linear-gradient(90deg, rgba(187, 236, 223, .52) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(187, 236, 223, .38) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(187, 236, 223, .26) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(187, 236, 223, .19) 1px, transparent 1px),
     radial-gradient(circle at 50% 32%, rgba(255,255,255,.64), transparent 28%),
-    radial-gradient(circle at 84% 18%, rgba(132,223,191,.34), transparent 28%),
-    radial-gradient(circle at 10% 82%, rgba(70,173,126,.24), transparent 32%),
-    linear-gradient(135deg, #dcfff5 0%, #bdf0e4 52%, #e4fff6 100%) !important;
+    radial-gradient(circle at 84% 18%, rgba(132,223,191,.17), transparent 28%),
+    radial-gradient(circle at 10% 82%, rgba(70,173,126,.12), transparent 32%),
+    linear-gradient(135deg, #edfffa 0%, #def8f2 52%, #f2fffb 100%) !important;
   background-size: 118px 118px, 118px 118px, auto, auto, auto, auto !important;
 }
 
@@ -1352,7 +1352,7 @@ body::before {
     radial-gradient(ellipse at 98% 42%, rgba(220,255,244,.66) 0 8%, transparent 9%),
     linear-gradient(120deg, rgba(149,225,195,.94), rgba(15,111,91,.92) 58%, rgba(4,76,67,.96));
   box-shadow: 0 24px 54px rgba(2,74,61,.26);
-  opacity: .72;
+  opacity: .36;
   transform: rotate(138deg);
 }
 
@@ -1368,7 +1368,7 @@ body::after {
     radial-gradient(ellipse at 98% 58%, rgba(220,255,244,.54) 0 8%, transparent 9%),
     linear-gradient(120deg, rgba(149,225,195,.92), rgba(15,111,91,.9) 58%, rgba(4,76,67,.96));
   box-shadow: 0 24px 54px rgba(2,74,61,.22);
-  opacity: .62;
+  opacity: .31;
   transform: rotate(-58deg);
 }
 
@@ -1383,7 +1383,7 @@ main,
 }
 
 .topbar {
-  background: linear-gradient(135deg, rgba(255,255,255,.70), rgba(214,255,242,.58)) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.84), rgba(240,255,251,.68)) !important;
   border-color: rgba(117,178,166,.42) !important;
   box-shadow: 0 18px 34px rgba(5,71,57,.10), inset 0 1px 0 rgba(255,255,255,.62);
   backdrop-filter: blur(16px);
@@ -1432,7 +1432,7 @@ textarea {
 .confirm-modal,
 .alert,
 .success {
-  background: linear-gradient(145deg, rgba(255,255,255,.80), rgba(232,255,246,.60)) !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(255,255,255,.84)) !important;
   border-color: rgba(117,178,166,.42) !important;
   box-shadow: 0 24px 52px rgba(5,71,57,.16), inset 0 1px 0 rgba(255,255,255,.62) !important;
   backdrop-filter: blur(12px);
