@@ -18,6 +18,21 @@ function clearSavedAdminToken() {
   localStorage.removeItem(adminTokenKey);
 }
 
+// Lớp trang trí nền: các khối 3D mềm nằm ở rìa màn hình. Không nhận sự kiện
+// chuột và ẩn với trình đọc màn hình vì chỉ mang vai trò thị giác.
+function Backdrop() {
+  return (
+    <div className="scene" aria-hidden="true">
+      <i className="s1" />
+      <i className="s2" />
+      <i className="s3" />
+      <i className="s4" />
+      <i className="s5" />
+      <i className="s6" />
+    </div>
+  );
+}
+
 function publicOnlyData(data: AppData): AppData {
   return {
     ...data,
@@ -220,52 +235,55 @@ export function App() {
   }, [isPublicMenu, view]);
 
   return (
-    <main>
-      <header className="topbar">
-        <button className="brand" onClick={() => setView("customer")} aria-label="CK Station">
-          <Coffee size={26} />
-          <span>Menu</span>
-        </button>
-        <div className="brand-center" aria-label="CK Station">
-          <strong className="botanical-title" aria-label="CK Station">
-            {"CK STATION".split("").map((letter, index) =>
-              letter === " " ? (
-                <span className="botanical-space" key={index} aria-hidden="true" />
-              ) : (
-                <span className="botanical-letter" key={`${letter}-${index}`}>
-                  {letter}
-                </span>
-              ),
-            )}
-          </strong>
-          <span className="brand-author">Author: Huỳnh Cỏ Khô</span>
-        </div>
-        {!isPublicMenu && (
-          <nav className="tabs">
-            <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}>
-              <Home size={18} /> Trang chủ
-            </button>
-            <button className={view === "customer" ? "active" : ""} onClick={() => setView("customer")}>
-              <Coffee size={18} /> Khách hàng
-            </button>
-            {showAdminControls && (
-              <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
-                <Settings size={18} /> Quản lý
+    <>
+      <Backdrop />
+      <main>
+        <header className="topbar">
+          <button className="brand" onClick={() => setView("customer")} aria-label="CK Station">
+            <Coffee size={26} />
+            <span>Menu</span>
+          </button>
+          <div className="brand-center" aria-label="CK Station">
+            <strong className="botanical-title" aria-label="CK Station">
+              {"CK STATION".split("").map((letter, index) =>
+                letter === " " ? (
+                  <span className="botanical-space" key={index} aria-hidden="true" />
+                ) : (
+                  <span className="botanical-letter" key={`${letter}-${index}`}>
+                    {letter}
+                  </span>
+                ),
+              )}
+            </strong>
+            <span className="brand-author">Author: Huỳnh Cỏ Khô</span>
+          </div>
+          {!isPublicMenu && (
+            <nav className="tabs">
+              <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}>
+                <Home size={18} /> Trang chủ
               </button>
-            )}
-            <button onClick={() => refresh(true, view === "admin" && Boolean(savedAdminToken()))} aria-label="Tải lại">
-              <RefreshCw size={18} />
-            </button>
-          </nav>
-        )}
-      </header>
+              <button className={view === "customer" ? "active" : ""} onClick={() => setView("customer")}>
+                <Coffee size={18} /> Khách hàng
+              </button>
+              {showAdminControls && (
+                <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}>
+                  <Settings size={18} /> Quản lý
+                </button>
+              )}
+              <button onClick={() => refresh(true, view === "admin" && Boolean(savedAdminToken()))} aria-label="Tải lại">
+                <RefreshCw size={18} />
+              </button>
+            </nav>
+          )}
+        </header>
 
-      {!isPublicMenu && view === "home" && <HomePage />}
-      {error && <p className="alert">{error}</p>}
-      {loading && <p className="loading">Đang tải dữ liệu...</p>}
-      {data && (isPublicMenu || view === "customer") && <CustomerPage data={data} onChanged={refresh} />}
-      {data && !isPublicMenu && view === "admin" && <AdminPage data={data} onChanged={(admin = false) => refresh(false, admin)} />}
-    </main>
+        {!isPublicMenu && view === "home" && <HomePage />}
+        {error && <p className="alert">{error}</p>}
+        {loading && <p className="loading">Đang tải dữ liệu...</p>}
+        {data && (isPublicMenu || view === "customer") && <CustomerPage data={data} onChanged={refresh} />}
+        {data && !isPublicMenu && view === "admin" && <AdminPage data={data} onChanged={(admin = false) => refresh(false, admin)} />}
+      </main>
+    </>
   );
 }
 

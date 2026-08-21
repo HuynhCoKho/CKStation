@@ -27,14 +27,14 @@
 
   --ink: #072b21;
   --ink-soft: #3d6459;
-  --ink-muted: #5e8175;
+  --ink-muted: #59796e;
 
-  --page: #ebf8f3;
+  --page: #f2fffa;
   --card-top: #ffffff;
   --card-bottom: #eefbf5;
   --card-line: #bfe6d5;
-  --slab: #b2ddca;
-  --slab-deep: #8fc9b2;
+  --slab: #d3ece1;
+  --slab-deep: #bde0d1;
 
   /* Extrusion depths. */
   --lift-sm: 3px;
@@ -57,63 +57,6 @@
 
 * {
   box-sizing: border-box;
-}
-
-body {
-  isolation: isolate;
-  margin: 0;
-  min-height: 100vh;
-  background:
-    linear-gradient(90deg, rgba(187, 236, 223, .26) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(187, 236, 223, .19) 1px, transparent 1px),
-    radial-gradient(circle at 50% 32%, rgba(255,255,255,.64), transparent 28%),
-    radial-gradient(circle at 84% 18%, rgba(132,223,191,.17), transparent 28%),
-    radial-gradient(circle at 10% 82%, rgba(70,173,126,.12), transparent 32%),
-    linear-gradient(135deg, #edfffa 0%, #def8f2 52%, #f2fffb 100%);
-  background-size: 118px 118px, 118px 118px, auto, auto, auto, auto;
-}
-
-/* Layered radial washes read as light falling into the page. Painted on a
-   fixed pseudo-element rather than with background-attachment: fixed, which
-   iOS Safari ignores and which repaints the whole page on every scroll. */
-body::before {
-  background:
-    radial-gradient(ellipse at 36% 36%, rgba(255,255,255,.24), transparent 24%),
-    radial-gradient(ellipse at 5% 26%, rgba(220,255,244,.78) 0 7%, transparent 8%),
-    radial-gradient(ellipse at 98% 42%, rgba(220,255,244,.66) 0 8%, transparent 9%),
-    linear-gradient(120deg, rgba(149,225,195,.94), rgba(15,111,91,.92) 58%, rgba(4,76,67,.96));
-  content: "";
-  border-radius: 54% 46% 58% 42% / 36% 45% 55% 64%;
-  box-shadow: 0 24px 54px rgba(2,74,61,.26);
-  height: 390px;
-  left: -86px;
-  opacity: .36;
-  pointer-events: none;
-  position: fixed;
-  top: 72px;
-  transform: rotate(138deg);
-  width: 270px;
-  z-index: 0;
-}
-
-body::after {
-  background:
-    radial-gradient(ellipse at 36% 36%, rgba(255,255,255,.22), transparent 24%),
-    radial-gradient(ellipse at 6% 38%, rgba(220,255,244,.72) 0 8%, transparent 9%),
-    radial-gradient(ellipse at 98% 58%, rgba(220,255,244,.54) 0 8%, transparent 9%),
-    linear-gradient(120deg, rgba(149,225,195,.92), rgba(15,111,91,.9) 58%, rgba(4,76,67,.96));
-  border-radius: 52% 48% 58% 42% / 36% 45% 55% 64%;
-  bottom: 24px;
-  box-shadow: 0 24px 54px rgba(2,74,61,.22);
-  content: "";
-  height: 410px;
-  opacity: .31;
-  pointer-events: none;
-  position: fixed;
-  right: -82px;
-  transform: rotate(-58deg);
-  width: 300px;
-  z-index: 0;
 }
 
 button,
@@ -1320,57 +1263,6 @@ textarea {
 }
 
 /* Canva rainforest mint skin */
-body {
-  isolation: isolate;
-  background:
-    linear-gradient(90deg, rgba(187, 236, 223, .26) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(187, 236, 223, .19) 1px, transparent 1px),
-    radial-gradient(circle at 50% 32%, rgba(255,255,255,.64), transparent 28%),
-    radial-gradient(circle at 84% 18%, rgba(132,223,191,.17), transparent 28%),
-    radial-gradient(circle at 10% 82%, rgba(70,173,126,.12), transparent 32%),
-    linear-gradient(135deg, #edfffa 0%, #def8f2 52%, #f2fffb 100%) !important;
-  background-size: 118px 118px, 118px 118px, auto, auto, auto, auto !important;
-}
-
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  pointer-events: none;
-  z-index: 0;
-}
-
-body::before {
-  left: -86px;
-  top: 72px;
-  width: 270px;
-  height: 390px;
-  border-radius: 54% 46% 58% 42% / 36% 45% 55% 64%;
-  background:
-    radial-gradient(ellipse at 36% 36%, rgba(255,255,255,.24), transparent 24%),
-    radial-gradient(ellipse at 5% 26%, rgba(220,255,244,.78) 0 7%, transparent 8%),
-    radial-gradient(ellipse at 98% 42%, rgba(220,255,244,.66) 0 8%, transparent 9%),
-    linear-gradient(120deg, rgba(149,225,195,.94), rgba(15,111,91,.92) 58%, rgba(4,76,67,.96));
-  box-shadow: 0 24px 54px rgba(2,74,61,.26);
-  opacity: .36;
-  transform: rotate(138deg);
-}
-
-body::after {
-  right: -82px;
-  bottom: 24px;
-  width: 300px;
-  height: 410px;
-  border-radius: 52% 48% 58% 42% / 36% 45% 55% 64%;
-  background:
-    radial-gradient(ellipse at 36% 36%, rgba(255,255,255,.22), transparent 24%),
-    radial-gradient(ellipse at 6% 38%, rgba(220,255,244,.72) 0 8%, transparent 9%),
-    radial-gradient(ellipse at 98% 58%, rgba(220,255,244,.54) 0 8%, transparent 9%),
-    linear-gradient(120deg, rgba(149,225,195,.92), rgba(15,111,91,.9) 58%, rgba(4,76,67,.96));
-  box-shadow: 0 24px 54px rgba(2,74,61,.22);
-  opacity: .31;
-  transform: rotate(-58deg);
-}
 
 main,
 .topbar,
@@ -1385,7 +1277,7 @@ main,
 .topbar {
   background: linear-gradient(135deg, rgba(255,255,255,.84), rgba(240,255,251,.68)) !important;
   border-color: rgba(117,178,166,.42) !important;
-  box-shadow: 0 18px 34px rgba(5,71,57,.10), inset 0 1px 0 rgba(255,255,255,.62);
+  box-shadow: 0 22px 44px -22px rgba(104, 164, 148, .30), 0 6px 14px -10px rgba(104, 164, 148, .18), inset 0 1px 0 rgba(255,255,255,.92);
   backdrop-filter: blur(16px);
 }
 
@@ -1434,7 +1326,7 @@ textarea {
 .success {
   background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(255,255,255,.84)) !important;
   border-color: rgba(117,178,166,.42) !important;
-  box-shadow: 0 24px 52px rgba(5,71,57,.16), inset 0 1px 0 rgba(255,255,255,.62) !important;
+  box-shadow: 0 30px 62px -26px rgba(104, 164, 148, .34), 0 10px 22px -14px rgba(104, 164, 148, .22), inset 0 1px 0 rgba(255,255,255,.92) !important;
   backdrop-filter: blur(12px);
 }
 
@@ -1680,5 +1572,158 @@ textarea {
 @media (max-width: 900px) {
   .home-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Nền 3D: mint siêu nhạt, khối mềm trôi nhẹ ----------
+
+   Nền chia hai tầng. body lo ánh sáng môi trường và chuyển màu; .scene giữ các
+   khối hình học bo tròn, cố định theo viewport nên cuộn trang không bắt trình
+   duyệt vẽ lại nền. Khối chỉ nằm ở rìa, chừa sạch vùng giữa cho nội dung. */
+
+body {
+  isolation: isolate;
+  margin: 0;
+  min-height: 100vh;
+  background:
+    /* Lưới thưa, mờ gần hết - gợi chất công nghệ chứ chưa thành hoạ tiết. */
+    linear-gradient(90deg, rgba(150, 200, 185, 0.09) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(150, 200, 185, 0.07) 1px, transparent 1px),
+    /* Nguồn sáng dịu chếch trên trái, toả đủ rộng để không lộ tâm sáng. */
+    radial-gradient(120% 85% at 16% -12%, rgba(255, 255, 255, 0.96), transparent 58%),
+    /* Hai vùng mint rất nhạt cho nền có chiều, đặt lệch khỏi vùng nội dung. */
+    radial-gradient(85% 65% at 92% 4%, rgba(206, 241, 229, 0.55), transparent 60%),
+    radial-gradient(75% 65% at 4% 98%, rgba(212, 243, 232, 0.5), transparent 58%),
+    /* Ambient occlusion: rìa đậm hơn tâm một chút để mặt phẳng có độ sâu. */
+    radial-gradient(135% 100% at 50% 44%, transparent 56%, rgba(146, 192, 178, 0.14)),
+    var(--page);
+  background-size: 150px 150px, 150px 150px, auto, auto, auto, auto;
+}
+
+.scene {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Mỗi khối là một mặt cong: điểm sáng lệch trên trái rồi chuyển dần sang mint ở
+   rìa dưới phải. Bóng đổ tách hai lớp - một lớp rộng và mờ cho cảm giác vật thể
+   đang trôi, một lớp sát chân khối làm ambient occlusion. Mép trên để một vệt
+   sáng mảnh cho bề mặt satin, không dùng highlight gắt kiểu kim loại. */
+.scene i {
+  position: absolute;
+  display: block;
+  background: radial-gradient(118% 118% at 30% 24%, #ffffff 0%, #f7fffc 32%, #e9f8f2 66%, #dcf0e8 100%);
+  box-shadow:
+    0 36px 64px -26px rgba(112, 170, 154, 0.3),
+    0 10px 20px -12px rgba(112, 170, 154, 0.18),
+    inset 0 2px 3px rgba(255, 255, 255, 0.95),
+    inset 0 -12px 26px rgba(160, 205, 191, 0.2);
+  transform: rotate(var(--tilt, 0deg));
+  animation: ck-float var(--dur, 24s) var(--delay, 0s) ease-in-out infinite alternate;
+}
+
+/* Chỉ dịch chuyển, không đổi kích thước hay bóng, để trình duyệt giữ khối trên
+   lớp hợp thành riêng và không phải vẽ lại từng khung hình. */
+@keyframes ck-float {
+  from {
+    transform: translate3d(0, 0, 0) rotate(var(--tilt, 0deg));
+  }
+  to {
+    transform: translate3d(0, -20px, 0) rotate(var(--tilt, 0deg));
+  }
+}
+
+.scene .s1 {
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  top: -84px;
+  left: -96px;
+  --dur: 26s;
+}
+
+.scene .s2 {
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  right: -120px;
+  bottom: -140px;
+  --dur: 30s;
+  --delay: -6s;
+}
+
+.scene .s3 {
+  width: 148px;
+  height: 148px;
+  border-radius: 38%;
+  right: -46px;
+  top: 27%;
+  --tilt: -14deg;
+  --dur: 21s;
+  --delay: -3s;
+}
+
+.scene .s4 {
+  width: 208px;
+  height: 88px;
+  border-radius: 999px;
+  left: -74px;
+  bottom: 26%;
+  --tilt: 16deg;
+  --dur: 24s;
+  --delay: -9s;
+}
+
+.scene .s5 {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  right: 13%;
+  top: -54px;
+  --dur: 18s;
+  --delay: -12s;
+}
+
+.scene .s6 {
+  width: 112px;
+  height: 112px;
+  border-radius: 34%;
+  left: 9%;
+  bottom: -48px;
+  --tilt: 22deg;
+  --dur: 27s;
+  --delay: -5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene i {
+    animation: none;
+  }
+}
+
+/* Màn hình hẹp: bỏ các khối giữa, chỉ giữ hai khối góc cho nền còn thoáng. */
+@media (max-width: 760px) {
+  .scene .s3,
+  .scene .s4,
+  .scene .s5,
+  .scene .s6 {
+    display: none;
+  }
+
+  .scene .s1 {
+    width: 196px;
+    height: 196px;
+    top: -68px;
+    left: -72px;
+  }
+
+  .scene .s2 {
+    width: 236px;
+    height: 236px;
+    right: -92px;
+    bottom: -104px;
   }
 }
