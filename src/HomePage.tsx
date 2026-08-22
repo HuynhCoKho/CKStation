@@ -299,10 +299,25 @@ function canComposeNews() {
   return Boolean(sessionStorage.getItem("ck_admin_token") || localStorage.getItem("ck_admin_token"));
 }
 
+// Giờ Việt Nam bất kể máy người xem đặt múi giờ nào.
+function formatTimeVN(iso: string) {
+  const time = new Date(iso);
+  if (Number.isNaN(time.getTime())) return "";
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(time);
+}
+
 function composeNewsPrompt() {
   const date = todayKey();
+  const now = formatTimeVN(new Date().toISOString());
   return [
     `Dùng skill ban-tin-tai-chinh-ngan-hang để tổng hợp bản tin tài chính - ngân hàng cho ngày ${formatDateVN(date)}.`,
+    "",
+    `Bây giờ là ${now} giờ Việt Nam. Dòng "Thời điểm cập nhật" phải ghi đúng giờ thực tế lúc tổng hợp, đừng tự đặt một giờ khác.`,
     "",
     "Soạn xong thì lưu thành một Google Doc MỚI trong thư mục Drive này:",
     `https://drive.google.com/drive/folders/${NEWS_FOLDER_ID}`,
@@ -355,7 +370,12 @@ function DailyNewsPanel() {
           <Newspaper size={20} /> Tin tức tổng hợp hôm nay
         </h2>
         <div className="news-meta">
-          {news && <p>{isToday ? "Cập nhật hôm nay" : `Bản tin gần nhất · ${formatDateVN(news.date)}`}</p>}
+          {news && (
+            <p>
+              {isToday ? "Cập nhật hôm nay" : `Bản tin gần nhất · ${formatDateVN(news.date)}`}
+              {formatTimeVN(news.publishedAt) && ` · ${formatTimeVN(news.publishedAt)}`}
+            </p>
+          )}
           {canCompose && (
             <button type="button" className="news-refresh news-compose" onClick={openClaude}>
               <Sparkles size={15} /> Tạo bản tin hôm nay

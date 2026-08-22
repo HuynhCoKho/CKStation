@@ -312,6 +312,20 @@ function sanitizeHtml(html) {
     .trim();
 }
 
+// Giờ trong dòng "Thời điểm cập nhật" là do Claude tự ghi khi soạn, thực tế hay
+// lệch hẳn với lúc bản tin được làm ra. Ghi đè bằng giờ xuất bản thật - đây là
+// mốc duy nhất lấy được chính xác mà không cần khoá API của Google. Không khớp
+// mẫu thì để nguyên, thà giữ nội dung gốc còn hơn sửa nhầm.
+function stampUpdateTime(markdown, when) {
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(when);
+  return markdown.replace(/(Thời điểm cập nhật[:*\s]*)(\d{1,2}[:h]\d{2})/, (_match, label) => `${label}${time}`);
+}
+
 function extractTitle(markdown) {
   const match = markdown.match(/^\s{0,3}#\s+(.+)$/m);
   if (!match) return "";
@@ -352,11 +366,13 @@ async function main() {
     writeFileSync(join(repoRoot, "news", `${date}.md`), source, "utf8");
   }
 
-  const html = isHtml ? sanitizeHtml(source) : mdToHtml(source);
+  const publishedAt = new Date();
+  const body = isHtml ? source : stampUpdateTime(source, publishedAt);
+  const html = isHtml ? sanitizeHtml(body) : mdToHtml(body);
   if (!html.trim()) throw new Error("Nội dung bản tin rỗng sau khi chuyển đổi.");
 
   const title = args.title || (isHtml ? defaultTitle : extractTitle(source)) || defaultTitle;
-  const bulletin = { date, title, publishedAt: new Date().toISOString(), html };
+  const bulletin = { date, title, publishedAt: publishedAt.toISOString(), html };
 
   mkdirSync(archiveDir, { recursive: true });
   writeFileSync(join(archiveDir, `${date}.json`), JSON.stringify(bulletin), "utf8");
