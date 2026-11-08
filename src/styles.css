@@ -1335,14 +1335,52 @@ textarea {
 .home-layout {
   display: grid;
   gap: 26px;
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr);
   padding: clamp(18px, 4vw, 40px);
 }
 
-.home-charts {
-  display: grid;
-  gap: 26px;
-  align-content: start;
+.faq-embed-panel {
+  background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(255,255,255,.88));
+  border: 1px solid var(--card-line);
+  border-radius: 18px;
+  box-shadow: 0 16px 36px -24px rgba(64, 119, 105, .35);
+  min-width: 0;
+  overflow: hidden;
+  padding: 16px;
+}
+
+.faq-embed-heading {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.faq-embed-heading h2 {
+  align-items: center;
+  color: var(--mint-800);
+  display: flex;
+  font-size: 18px;
+  gap: 9px;
+  margin: 0;
+}
+
+.faq-embed-heading a {
+  color: var(--mint-700);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.faq-embed-frame {
+  background: #fff;
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  display: block;
+  height: min(78vh, 900px);
+  min-height: 560px;
+  width: 100%;
 }
 
 .news-panel {

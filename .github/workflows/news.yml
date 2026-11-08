@@ -3,7 +3,8 @@
 # Claude trên claude.ai web soạn bản tin và lưu thành Google Doc mới trong
 # thư mục NEWS_FOLDER_ID với tên bắt đầu bằng ngày (yyyy-mm-dd). Workflow này
 # chạy vài lần mỗi sáng, thấy bản tin có ngày mới hơn bản trang đang hiển thị
-# thì tải về, chuyển sang HTML, commit và deploy luôn.
+# thì tải về, chuyển sang HTML, commit và deploy luôn. Có thể chạy thủ công để
+# đăng lại bản Doc đã sửa cùng ngày hoặc gỡ bản tin theo ngày.
 #
 # Workflow tự deploy thay vì để deploy.yml chạy tiếp, vì push bằng
 # GITHUB_TOKEN không kích hoạt workflow khác.
@@ -13,12 +14,25 @@ name: Bản tin
 on:
   schedule:
     # Giờ UTC, Việt Nam là UTC+7. Quét dày suốt buổi sáng vì bản tin có thể
-    # được soạn bất cứ lúc nào từ tờ mờ sáng: 22:00-04:45 UTC = 05:00-11:45 giờ VN.
+# được soạn bất cứ lúc nào từ tờ mờ sáng: 22:00-04:45 UTC = 05:00-11:45 giờ VN.
     - cron: "*/15 22-23 * * *"
     - cron: "*/15 0-4 * * *"
     # Phần còn lại trong ngày quét thưa hơn: 12:00-23:00 giờ VN.
     - cron: "0 5-16 * * *"
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Thao tác với bản tin CK Station"
+        type: choice
+        options:
+          - publish
+          - unpublish
+        default: publish
+        required: true
+      date:
+        description: "Ngày bản tin cần gỡ (YYYY-MM-DD); chỉ dùng khi unpublish"
+        type: string
+        required: false
 
 env:
   NEWS_FOLDER_ID: 1xI1dSHl27BPUC1bE9gD4fEJtM9AgxZLS
@@ -46,16 +60,55 @@ jobs:
           cache: npm
       - run: npm ci
 
-      - name: Tìm và xuất bản bản tin mới nhất
-        id: news
+      - name: Đăng lại bản tin mới nhất đã sửa trong Google Drive
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'publish'
+        id: manual_publish
+        run: node scripts/publish-news.mjs --folder "$NEWS_FOLDER_ID"
+
+      - name: Gỡ bản tin sai và khôi phục bản lưu trước đó
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'unpublish'
+        id: unpublish
+        env:
+          NEWS_DATE: ${{ inputs.date }}
+        run: node scripts/unpublish-news.mjs --date "$NEWS_DATE"
+
+      - name: Tự động đăng khi có ngày bản tin mới
+        if: github.event_name == 'schedule'
+        id: scheduled_news
         run: node scripts/publish-news.mjs --folder "$NEWS_FOLDER_ID" --only-if-new
+
+      - name: Chuẩn hóa kết quả workflow
+        id: news
+        if: always()
+        env:
+          UNPUBLISHED: ${{ steps.unpublish.outputs.published }}
+          UNPUBLISHED_DATE: ${{ steps.unpublish.outputs.date }}
+          SCHEDULED_PUBLISHED: ${{ steps.scheduled_news.outputs.published }}
+          SCHEDULED_DATE: ${{ steps.scheduled_news.outputs.date }}
+          MANUAL_PUBLISHED: ${{ steps.manual_publish.outputs.published }}
+          MANUAL_DATE: ${{ steps.manual_publish.outputs.date }}
+          REQUESTED_DATE: ${{ inputs.date }}
+        run: |
+          if [ "$UNPUBLISHED" = "true" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            printf 'date=%s\n' "$UNPUBLISHED_DATE" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULED_PUBLISHED" = "true" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            printf 'date=%s\n' "$SCHEDULED_DATE" >> "$GITHUB_OUTPUT"
+          elif [ "$MANUAL_PUBLISHED" = "true" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            printf 'date=%s\n' "$MANUAL_DATE" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            printf 'date=%s\n' "$REQUESTED_DATE" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Commit bản tin
         if: steps.news.outputs.published == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add news public
+          git add -A news public
           git diff --staged --quiet || git commit -m "Bản tin ngày ${{ steps.news.outputs.date }}"
           git push
 
