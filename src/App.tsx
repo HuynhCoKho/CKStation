@@ -245,7 +245,7 @@ export function App() {
           </button>
           <div className="brand-center" aria-label="CK Station">
             <strong className="botanical-title" aria-label="CK Station">
-              {"CK STATION".split("").map((letter, index) =>
+              {"CK Station".split("").map((letter, index) =>
                 letter === " " ? (
                   <span className="botanical-space" key={index} aria-hidden="true" />
                 ) : (
