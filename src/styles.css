@@ -1669,3 +1669,6 @@ body::after {
     display: none;
   }
 }
+
+/* The supplied artwork already includes the ownership stamp. */
+.hck-owner-stamp { display: none !important; }
